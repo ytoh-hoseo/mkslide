@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "mkslide-hoseo"
+version = "0.1.0"
+description = "Markdown to Beamer PDF slide converter for Hoseo University"
+requires-python = ">=3.8"
+
+[project.scripts]
+mkslide = "mkslide.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+mkslide = ["data/*"]

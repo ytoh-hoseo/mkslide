@@ -1,0 +1,78 @@
+% preamble-ko.inc.tex
+
+\usepackage{kotex}
+\usepackage{tikz}
+\usepackage{emoji}
+\usepackage[absolute,overlay]{textpos}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+
+\newfontfamily\lmfont{Latin Modern Roman}
+\AtBeginEnvironment{algorithmic}{\lmfont}
+
+\usetheme{metropolis}
+
+\definecolor{mainred}{HTML}{B71C1C}
+
+% 전체 배경/본문
+\setbeamercolor{normal text}{fg=black,bg=white}
+
+% metropolis 포인트 컬러(불릿/섹션 등)
+\setbeamercolor{structure}{fg=mainred}
+
+% 헤더(제목 영역) 흰색
+\setbeamercolor{frametitle}{bg=white, fg=black}
+\setbeamerfont{frametitle}{series=\bfseries}
+
+% ===== underbar (progress bar) 유지/색 지정 =====
+\metroset{progressbar=frametitle}
+\setbeamercolor{progress bar}{fg=mainred}
+
+% 불릿 모양
+\setbeamertemplate{itemize item}{$\bullet$}
+\setbeamertemplate{itemize subitem}{$\circ$}
+\setbeamertemplate{itemize subsubitem}{$\cdot$}
+
+% block 스타일
+\setbeamercolor{block title}{bg=mainred!70, fg=white}
+\setbeamercolor{block body}{bg=mainred!10, fg=black}
+
+\setbeamercolor{block title alerted}{bg=mainred, fg=white}
+\setbeamercolor{block body alerted}{bg=mainred!20, fg=black}
+
+\setbeamercolor{block title example}{bg=gray!50, fg=black}
+\setbeamercolor{block body example}{bg=gray!10, fg=black}
+
+% ===== school mark (bottom-left, fixed) =====
+\makeatletter
+\addtobeamertemplate{background canvas}{}{%
+  \ifbeamer@plainframe\relax
+  \else
+    \ifnum\insertframenumber=1\relax
+    \else
+      \begin{textblock*}{9mm}(2mm,\paperheight-8mm)%
+        \includegraphics[width=9mm]{@@LOGO_PATH@@}%
+      \end{textblock*}%
+    \fi
+  \fi
+}
+\makeatother
+
+% 제목 없을 때 제목 행은 숨기되 배경은 유지하는 템플릿
+\makeatletter
+\setbeamertemplate{block begin}{%
+  \@ifempty\insertblocktitle{}{%
+    \begin{beamercolorbox}[sep=0.5ex]{block title}%
+      \usebeamerfont{block title}\insertblocktitle%
+    \end{beamercolorbox}%
+    \nointerlineskip%
+  }%
+  \begin{beamercolorbox}[sep=1ex]{block body}%
+    \usebeamerfont{block body}%
+}
+\setbeamertemplate{block end}{%
+  \end{beamercolorbox}%
+}
+\makeatother
+
+\tracinglostchars=0
