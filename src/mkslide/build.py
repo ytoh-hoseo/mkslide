@@ -1,3 +1,4 @@
+import re
 import shutil
 import subprocess
 import sys
@@ -7,11 +8,31 @@ DATA_DIR = Path(__file__).parent / "data"
 DEFAULT_LOGO = DATA_DIR / "school-mark.pdf"
 PREAMBLE_TEMPLATE = DATA_DIR / "preamble-ko.inc.tex"
 
+# Pandoc variables applied only when not defined in YAML front matter or --var
+DEFAULT_VARS = {
+    "mainfont": "NanumSquareRound",
+    "monofont": "NanumGothicCoding",
+}
+
 
 def _check_deps() -> None:
     missing = [cmd for cmd in ("pandoc", "dot2tex", "latexmk") if shutil.which(cmd) is None]
     if missing:
         sys.exit(f"Error: missing required tools: {', '.join(missing)}")
+
+
+def _yaml_front_matter_keys(md_path: Path) -> set:
+    """Return top-level keys defined in the YAML front matter of a markdown file."""
+    text = md_path.read_text(encoding="utf-8")
+    m = re.match(r"^---[ \t]*\n(.*?)\n(?:---|\.\.\.)[ \t]*\n", text, re.DOTALL)
+    if not m:
+        return set()
+    keys = set()
+    for line in m.group(1).splitlines():
+        km = re.match(r"^([A-Za-z_][A-Za-z0-9_-]*)\s*:", line)
+        if km:
+            keys.add(km.group(1))
+    return keys
 
 
 def _logo_latex_path(logo: Path) -> str:
@@ -22,7 +43,7 @@ def _logo_latex_path(logo: Path) -> str:
     return s
 
 
-def build(md_input: str, output_dir: str = None, logo: str = None) -> None:
+def build(md_input: str, output_dir: str = None, logo: str = None, vars: list = None) -> None:
     _check_deps()
 
     in_path = Path(md_input).resolve()
@@ -57,18 +78,23 @@ def build(md_input: str, output_dir: str = None, logo: str = None) -> None:
 
     # 3) Pandoc → Beamer .tex
     print("[3/4] Running pandoc ...")
-    subprocess.run(
-        [
-            "pandoc",
-            "-t", "beamer",
-            "--standalone",
-            "--slide-level=2",
-            "-H", str(preamble_tmp),
-            str(tmp_md),
-            "-o", str(tex_path),
-        ],
-        check=True,
-    )
+    pandoc_cmd = [
+        "pandoc",
+        "-t", "beamer",
+        "--standalone",
+        "--slide-level=2",
+        "-H", str(preamble_tmp),
+    ]
+    # Apply defaults only for keys absent from both YAML front matter and --var
+    yaml_keys = _yaml_front_matter_keys(in_path)
+    cli_keys = {v.split("=", 1)[0] for v in (vars or [])}
+    for key, val in DEFAULT_VARS.items():
+        if key not in yaml_keys and key not in cli_keys:
+            pandoc_cmd.extend(["-V", f"{key}={val}"])
+    for v in (vars or []):
+        pandoc_cmd.extend(["-V", v])
+    pandoc_cmd.extend([str(tmp_md), "-o", str(tex_path)])
+    subprocess.run(pandoc_cmd, check=True)
 
     # 4) Postprocess: remove empty frames
     from mkslide.postprocess import postprocess

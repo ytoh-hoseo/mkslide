@@ -3,6 +3,15 @@ title: "Template Sanity Check"
 author: "Name"
 date: 2026-02-26
 # Pandoc PPTX 스타일/레이아웃 점검용 최소 문서
+toc: false
+mainfont: NanumSquareRound
+monofont: NanumGothicCoding
+# CJKmainfont: NanumSquareRound
+# CJKmonofont: NanumGothicCoding
+# CJKoptions:
+#   - Renderer=Harfbuzz
+fontsize: 11pt
+aspectratio: 169
 ---
 
 # Title slide check

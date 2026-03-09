@@ -39,6 +39,14 @@ examples:
         action="store_true",
         help="With 'clean': also remove generated PDFs",
     )
+    parser.add_argument(
+        "--var",
+        dest="vars",
+        metavar="KEY=VALUE",
+        action="append",
+        default=[],
+        help="Pass a pandoc variable (-V KEY=VALUE); can be repeated",
+    )
 
     args = parser.parse_args()
 
@@ -47,7 +55,7 @@ examples:
         clean(output_dir=args.output_dir, remove_pdfs=args.remove_all)
     else:
         from mkslide.build import build
-        build(args.input, output_dir=args.output_dir, logo=args.logo)
+        build(args.input, output_dir=args.output_dir, logo=args.logo, vars=args.vars)
 
 
 if __name__ == "__main__":
