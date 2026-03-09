@@ -47,6 +47,17 @@ examples:
         default=[],
         help="Pass a pandoc variable (-V KEY=VALUE); can be repeated",
     )
+    parser.add_argument(
+        "--no-ramdisk",
+        dest="use_ramdisk",
+        action="store_false",
+        help="Disable RAM disk acceleration (Linux only; uses /dev/shm by default)",
+    )
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="Save intermediate files (.tex, graphs/) to output dir for inspection",
+    )
 
     args = parser.parse_args()
 
@@ -55,7 +66,8 @@ examples:
         clean(output_dir=args.output_dir, remove_pdfs=args.remove_all)
     else:
         from mkslide.build import build
-        build(args.input, output_dir=args.output_dir, logo=args.logo, vars=args.vars)
+        build(args.input, output_dir=args.output_dir, logo=args.logo, vars=args.vars,
+              use_ramdisk=args.use_ramdisk, debug=args.debug)
 
 
 if __name__ == "__main__":

@@ -45,21 +45,15 @@ def parse_float_attr(attrs: str, key: str, default: float) -> float:
 
 
 def _ensure_pdf(dot_src: str, h: str, graphdir: str) -> None:
-    dot_path = os.path.join(graphdir, f"{h}.dot")
     pdf_path = os.path.join(graphdir, f"{h}.pdf")
-    log_path = os.path.join(graphdir, f"{h}.dot.log")
-
     if os.path.exists(pdf_path):
         return
-
-    pathlib.Path(dot_path).write_text(dot_src, encoding="utf-8")
-    with open(log_path, "w", encoding="utf-8") as log:
-        p = subprocess.run(
-            ["dot", "-Tpdf", "-o", pdf_path, dot_path],
-            stdout=log, stderr=subprocess.STDOUT, text=True,
-        )
+    p = subprocess.run(
+        ["dot", "-Tpdf", "-o", pdf_path],
+        input=dot_src, capture_output=True, text=True,
+    )
     if p.returncode != 0:
-        raise RuntimeError(f"dot failed (rc={p.returncode}). See: {log_path}")
+        raise RuntimeError(f"dot failed (rc={p.returncode}):\n{p.stderr}")
 
 
 def _replace_dot_blocks(text: str, graphdir: str) -> str:

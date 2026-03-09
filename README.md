@@ -80,6 +80,8 @@ mkslide clean --output-dir /tmp/slides
 | `--output-dir DIR` | `./output` | 출력 디렉토리 |
 | `--logo PDF` | 내장 교표 | 로고 PDF 파일 경로 |
 | `--var KEY=VALUE` | — | pandoc 변수 전달 (`-V`), 반복 사용 가능 |
+| `--debug` | `False` | 중간 파일(`.tex`, `graphs/`) 을 output dir에 저장 |
+| `--no-ramdisk` | — | RAM disk 가속 비활성화 (Linux 전용) |
 | `--all` | `False` | `clean` 시 PDF도 함께 삭제 |
 
 ### pandoc 변수 (`--var`)

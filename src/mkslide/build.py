@@ -1,7 +1,9 @@
+import platform
 import re
 import shutil
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 DATA_DIR = Path(__file__).parent / "data"
@@ -43,7 +45,17 @@ def _logo_latex_path(logo: Path) -> str:
     return s
 
 
-def build(md_input: str, output_dir: str = None, logo: str = None, vars: list = None) -> None:
+def _get_work_tmp(use_ramdisk: bool) -> Path:
+    """Return a temp working directory: /dev/shm on Linux when available, else /tmp."""
+    if use_ramdisk and platform.system() == "Linux":
+        shm = Path("/dev/shm")
+        if shm.is_dir():
+            return Path(tempfile.mkdtemp(dir=shm, prefix="mkslide_"))
+    return Path(tempfile.mkdtemp(prefix="mkslide_"))
+
+
+def build(md_input: str, output_dir: str = None, logo: str = None, vars: list = None,
+          use_ramdisk: bool = True, debug: bool = False) -> None:
     _check_deps()
 
     in_path = Path(md_input).resolve()
@@ -51,67 +63,83 @@ def build(md_input: str, output_dir: str = None, logo: str = None, vars: list = 
         sys.exit(f"Error: file not found: {md_input}")
 
     out_dir = Path(output_dir).resolve() if output_dir else Path.cwd() / "output"
-    graph_dir = out_dir / "graphs"
     out_dir.mkdir(parents=True, exist_ok=True)
-    graph_dir.mkdir(parents=True, exist_ok=True)
 
     logo_path = Path(logo).resolve() if logo else DEFAULT_LOGO
     if not logo_path.exists():
         sys.exit(f"Error: logo file not found: {logo_path}")
 
     base = in_path.stem
-    tmp_md = out_dir / f"{base}.with_graphs.md"
-    tex_path = out_dir / f"{base}.tex"
-    pdf_path = out_dir / f"{base}.pdf"
+    tmp = _get_work_tmp(use_ramdisk)
+    on_ramdisk = str(tmp).startswith("/dev/shm")
+    note = " (ramdisk)" if on_ramdisk else ""
 
-    # 1) Preprocess: dot→TikZ, fontsize
-    from mkslide.preprocess import preprocess
-    print(f"[1/4] Preprocessing {in_path.name} ...")
-    preprocess(str(in_path), str(tmp_md), str(graph_dir))
+    try:
+        graph_dir = tmp / "graphs"
+        graph_dir.mkdir()
+        tmp_md = tmp / f"{base}.with_graphs.md"
+        tex_path = tmp / f"{base}.tex"
 
-    # 2) Generate preamble with injected logo path
-    print("[2/4] Generating preamble ...")
-    preamble_content = PREAMBLE_TEMPLATE.read_text(encoding="utf-8")
-    preamble_content = preamble_content.replace("@@LOGO_PATH@@", _logo_latex_path(logo_path))
-    preamble_tmp = out_dir / "preamble-ko.inc.tex"
-    preamble_tmp.write_text(preamble_content, encoding="utf-8")
+        # 1) Preprocess: dot→PDF, fontsize, image paths
+        from mkslide.preprocess import preprocess
+        print(f"[1/4] Preprocessing {in_path.name} ...{note}")
+        preprocess(str(in_path), str(tmp_md), str(graph_dir))
 
-    # 3) Pandoc → Beamer .tex
-    print("[3/4] Running pandoc ...")
-    pandoc_cmd = [
-        "pandoc",
-        "-t", "beamer",
-        "--standalone",
-        "--slide-level=2",
-        "-H", str(preamble_tmp),
-    ]
-    # Apply defaults only for keys absent from both YAML front matter and --var
-    yaml_keys = _yaml_front_matter_keys(in_path)
-    cli_keys = {v.split("=", 1)[0] for v in (vars or [])}
-    for key, val in DEFAULT_VARS.items():
-        if key not in yaml_keys and key not in cli_keys:
-            pandoc_cmd.extend(["-V", f"{key}={val}"])
-    for v in (vars or []):
-        pandoc_cmd.extend(["-V", v])
-    pandoc_cmd.extend([str(tmp_md), "-o", str(tex_path)])
-    subprocess.run(pandoc_cmd, check=True)
+        # 2) Generate preamble with injected logo path
+        print("[2/4] Generating preamble ...")
+        preamble_content = PREAMBLE_TEMPLATE.read_text(encoding="utf-8")
+        preamble_content = preamble_content.replace("@@LOGO_PATH@@", _logo_latex_path(logo_path))
+        preamble_tmp = tmp / "preamble-ko.inc.tex"
+        preamble_tmp.write_text(preamble_content, encoding="utf-8")
 
-    # 4) Postprocess: remove empty frames
-    from mkslide.postprocess import postprocess
-    postprocess(str(tex_path))
+        # 3) Pandoc → Beamer .tex
+        print("[3/4] Running pandoc ...")
+        pandoc_cmd = [
+            "pandoc",
+            "-t", "beamer",
+            "--standalone",
+            "--slide-level=2",
+            "-H", str(preamble_tmp),
+        ]
+        yaml_keys = _yaml_front_matter_keys(in_path)
+        cli_keys = {v.split("=", 1)[0] for v in (vars or [])}
+        for key, val in DEFAULT_VARS.items():
+            if key not in yaml_keys and key not in cli_keys:
+                pandoc_cmd.extend(["-V", f"{key}={val}"])
+        for v in (vars or []):
+            pandoc_cmd.extend(["-V", v])
+        pandoc_cmd.extend([str(tmp_md), "-o", str(tex_path)])
+        subprocess.run(pandoc_cmd, check=True)
 
-    # 5) latexmk → PDF
-    print("[4/4] Running latexmk ...")
-    subprocess.run(
-        ["latexmk", "-lualatex", "-interaction=nonstopmode", "-g", f"{base}.tex"],
-        cwd=str(out_dir),
-        check=True,
-    )
+        # 4) Postprocess: remove empty frames
+        from mkslide.postprocess import postprocess
+        postprocess(str(tex_path))
 
-    print(f"\nGenerated:")
-    print(f"  {tmp_md}")
-    print(f"  {tex_path}")
-    print(f"  {pdf_path}")
+        # 5) latexmk → PDF
+        print(f"[4/4] Running latexmk ...{note}")
+        subprocess.run(
+            ["latexmk", "-lualatex", "-interaction=nonstopmode", "-g", f"{base}.tex"],
+            cwd=str(tmp),
+            check=True,
+        )
+
+        # Copy results to out_dir
+        pdf_path = out_dir / f"{base}.pdf"
+        shutil.copy2(tmp / f"{base}.pdf", pdf_path)
+        print(f"\nGenerated: {pdf_path}")
+
+        if debug:
+            shutil.copy2(tex_path, out_dir / f"{base}.tex")
+            shutil.copy2(tmp_md, out_dir / f"{base}.with_graphs.md")
+            debug_graphs = out_dir / "graphs"
+            debug_graphs.mkdir(exist_ok=True)
+            for f in graph_dir.iterdir():
+                shutil.copy2(f, debug_graphs / f.name)
+            print(f"  [debug] {out_dir / f'{base}.tex'}")
+            print(f"  [debug] {out_dir / 'graphs/'}")
+
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
 
 
 def clean(output_dir: str = None, remove_pdfs: bool = False) -> None:
@@ -123,24 +151,18 @@ def clean(output_dir: str = None, remove_pdfs: bool = False) -> None:
 
     print(f"Cleaning {out_dir}/ ...")
 
-    subprocess.run(["latexmk", "-C"], cwd=str(out_dir), capture_output=True)
-
-    aux_patterns = [
-        "*.with_graphs.md", "*.tex", "*.aux", "*.log", "*.nav", "*.snm",
-        "*.toc", "*.out", "*.fls", "*.fdb_latexmk", "*.synctex.gz",
-    ]
-    for pat in aux_patterns:
+    # Remove debug artifacts (tex, preprocessed md)
+    for pat in ("*.tex", "*.with_graphs.md"):
         for f in out_dir.glob(pat):
             f.unlink(missing_ok=True)
+
+    # Remove debug graphs dir
+    graph_dir = out_dir / "graphs"
+    if graph_dir.exists():
+        shutil.rmtree(graph_dir)
 
     if remove_pdfs:
         for f in out_dir.glob("*.pdf"):
             f.unlink(missing_ok=True)
-
-    graph_dir = out_dir / "graphs"
-    if graph_dir.exists():
-        for pat in ("*.pdf", "*.dot", "*.dot.log"):
-            for f in graph_dir.glob(pat):
-                f.unlink(missing_ok=True)
 
     print("Clean done.")
