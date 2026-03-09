@@ -16,7 +16,7 @@ DEFAULT_VARS = {
 
 
 def _check_deps() -> None:
-    missing = [cmd for cmd in ("pandoc", "dot2tex", "latexmk") if shutil.which(cmd) is None]
+    missing = [cmd for cmd in ("pandoc", "dot", "latexmk") if shutil.which(cmd) is None]
     if missing:
         sys.exit(f"Error: missing required tools: {', '.join(missing)}")
 
@@ -139,7 +139,7 @@ def clean(output_dir: str = None, remove_pdfs: bool = False) -> None:
 
     graph_dir = out_dir / "graphs"
     if graph_dir.exists():
-        for pat in ("*.tex", "*.dot", "*.dot2tex.log"):
+        for pat in ("*.pdf", "*.dot", "*.dot.log"):
             for f in graph_dir.glob(pat):
                 f.unlink(missing_ok=True)
 

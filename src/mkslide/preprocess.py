@@ -44,22 +44,22 @@ def parse_float_attr(attrs: str, key: str, default: float) -> float:
         return default
 
 
-def _ensure_tikz(dot_src: str, h: str, graphdir: str) -> None:
+def _ensure_pdf(dot_src: str, h: str, graphdir: str) -> None:
     dot_path = os.path.join(graphdir, f"{h}.dot")
-    tex_path = os.path.join(graphdir, f"{h}.tex")
-    log_path = os.path.join(graphdir, f"{h}.dot2tex.log")
+    pdf_path = os.path.join(graphdir, f"{h}.pdf")
+    log_path = os.path.join(graphdir, f"{h}.dot.log")
 
-    if os.path.exists(tex_path):
+    if os.path.exists(pdf_path):
         return
 
     pathlib.Path(dot_path).write_text(dot_src, encoding="utf-8")
     with open(log_path, "w", encoding="utf-8") as log:
         p = subprocess.run(
-            ["dot2tex", "--tikz", "--autosize", "--figonly", "-o", tex_path, dot_path],
+            ["dot", "-Tpdf", "-o", pdf_path, dot_path],
             stdout=log, stderr=subprocess.STDOUT, text=True,
         )
     if p.returncode != 0:
-        raise RuntimeError(f"dot2tex failed (rc={p.returncode}). See: {log_path}")
+        raise RuntimeError(f"dot failed (rc={p.returncode}). See: {log_path}")
 
 
 def _replace_dot_blocks(text: str, graphdir: str) -> str:
@@ -72,20 +72,34 @@ def _replace_dot_blocks(text: str, graphdir: str) -> str:
         attrs = (m.group("attrs") or "").strip()
         dot_src = m.group("body")
 
+        h = hashlib.sha1(dot_src.encode("utf-8")).hexdigest()
+        _ensure_pdf(dot_src, h, graphdir)
+
         width_str = parse_dim_attr(attrs, "width")
         height_str = parse_dim_attr(attrs, "height")
-        if width_str == "!" and height_str == "!":
-            width_str = r"\linewidth"
+        has_width = width_str != "!"
+        has_height = height_str != "!"
 
-        scale = max(0.01, min(parse_float_attr(attrs, "scale", 1.0), 5.0))
+        if has_width or has_height:
+            opts = []
+            if has_width:
+                opts.append(f"width={width_str}")
+            if has_height:
+                opts.append(f"height={height_str}")
+            if has_width and has_height:
+                opts.append("keepaspectratio")
+        else:
+            scale = parse_float_attr(attrs, "scale", 1.0)
+            if scale != 1.0:
+                opts = [f"scale={max(0.01, min(scale, 5.0))}"]
+            else:
+                opts = [r"width=\linewidth"]
 
-        h = hashlib.sha1(dot_src.encode("utf-8")).hexdigest()
-        _ensure_tikz(dot_src, h, graphdir)
-
+        opts_str = ",".join(opts)
         return "\n".join([
             "```{=tex}",
             r"\begin{center}",
-            rf"\resizebox{{{width_str}}}{{{height_str}}}{{\scalebox{{{scale}}}{{\input{{graphs/{h}.tex}}}}}}",
+            rf"\includegraphics[{opts_str}]{{graphs/{h}.pdf}}",
             r"\end{center}",
             "```",
             "",
