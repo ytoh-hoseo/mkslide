@@ -94,6 +94,26 @@ def _replace_dot_blocks(text: str, graphdir: str) -> str:
     return pattern.sub(repl, text)
 
 
+def _resolve_image_paths(text: str, md_dir: str) -> str:
+    """Rewrite relative image paths to absolute paths based on the source markdown directory.
+
+    Needed because the preprocessed .md is written to output/, so relative paths
+    would be resolved against output/ by both pandoc and latexmk.
+    """
+    def repl(m: re.Match) -> str:
+        alt = m.group(1)
+        path = m.group(2)
+        attrs = m.group(3) or ""
+        if path.startswith(("http://", "https://", "/", "\\")):
+            return m.group(0)
+        abs_path = pathlib.Path(md_dir) / path
+        # LaTeX/pandoc expect forward slashes
+        fwd = str(abs_path.resolve()).replace("\\", "/")
+        return f"![{alt}]({fwd}){attrs}"
+
+    return re.sub(r"!\[([^\]]*)\]\(([^)]+)\)(\{[^}]*\})?", repl, text)
+
+
 def _replace_fontsize_blocks(text: str) -> str:
     code_pat = re.compile(
         r"^(`{3,})\{(?P<attrs>[^\}]+)\}\n(?P<body>.*?)\n\1",
@@ -128,9 +148,12 @@ def _replace_fontsize_blocks(text: str) -> str:
 
 
 def preprocess(md_in: str, out_md: str, graphdir: str) -> None:
-    """Preprocess markdown: dot blocks → TikZ, fontsize attrs → LaTeX wrappers."""
+    """Preprocess markdown: dot blocks → TikZ, fontsize attrs → LaTeX wrappers,
+    relative image paths → absolute paths."""
     os.makedirs(graphdir, exist_ok=True)
-    text = pathlib.Path(md_in).read_text(encoding="utf-8")
+    in_path = pathlib.Path(md_in)
+    text = in_path.read_text(encoding="utf-8")
     text = _replace_dot_blocks(text, graphdir)
     text = _replace_fontsize_blocks(text)
+    text = _resolve_image_paths(text, str(in_path.parent))
     pathlib.Path(out_md).write_text(text, encoding="utf-8")

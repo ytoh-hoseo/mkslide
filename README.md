@@ -1,0 +1,152 @@
+# mkslide-hoseo
+
+Markdown 파일을 호서대학교 스타일의 Beamer PDF 슬라이드로 변환하는 CLI 도구입니다.
+
+## 변환 파이프라인
+
+```
+Markdown (.md)
+  → [전처리] dot 블록 → TikZ, fontsize 속성 → LaTeX 래퍼
+  → [pandoc] Beamer .tex 생성
+  → [후처리] 빈 프레임 제거
+  → [latexmk] PDF 컴파일
+```
+
+## 의존성
+
+다음 도구들이 시스템에 설치되어 있어야 합니다.
+
+| 도구 | 역할 |
+|------|------|
+| `pandoc` | Markdown → Beamer `.tex` 변환 |
+| `dot2tex` | DOT 그래프 → TikZ 변환 |
+| `latexmk` | LuaLaTeX 기반 PDF 컴파일 |
+
+LuaLaTeX 환경에서 다음 LaTeX 패키지가 필요합니다: `kotex`, `tikz`, `emoji`, `textpos`, `algorithm`, `algpseudocode`, `metropolis` 테마.
+
+## 설치
+
+```bash
+pip install .
+```
+
+또는 개발 모드로 설치:
+
+```bash
+pip install -e .
+```
+
+## 사용법
+
+```
+mkslide <input.md> [옵션]
+mkslide clean [옵션]
+```
+
+### 슬라이드 빌드
+
+```bash
+# 기본 빌드 (output/ 디렉토리에 결과 생성)
+mkslide week01.md
+
+# 출력 디렉토리 지정
+mkslide week01.md --output-dir /tmp/slides
+
+# 로고 파일 지정
+mkslide week01.md --logo /path/to/logo.pdf
+```
+
+### 빌드 아티팩트 정리
+
+```bash
+# 중간 파일만 삭제 (.tex, .aux 등)
+mkslide clean
+
+# 중간 파일 + 생성된 PDF 모두 삭제
+mkslide clean --all
+
+# 출력 디렉토리 지정하여 정리
+mkslide clean --output-dir /tmp/slides
+```
+
+### 옵션
+
+| 옵션 | 기본값 | 설명 |
+|------|--------|------|
+| `--output-dir DIR` | `./output` | 출력 디렉토리 |
+| `--logo PDF` | 내장 교표 | 로고 PDF 파일 경로 |
+| `--all` | `False` | `clean` 시 PDF도 함께 삭제 |
+
+## Markdown 작성 규칙
+
+`pandoc` Beamer 변환 규칙을 따릅니다 (`--slide-level=2`).
+
+- `#` : 섹션 구분
+- `##` : 슬라이드(프레임) 제목
+
+```markdown
+# 1장. 소개
+
+## 개요
+
+- 항목 1
+- 항목 2
+
+## 예시 코드
+
+```python
+print("Hello, World!")
+` ``
+```
+
+### DOT 그래프 삽입
+
+코드 블록 언어를 `dot`으로 지정하면 TikZ로 자동 변환됩니다.
+
+````markdown
+```{.dot width=0.6}
+digraph G {
+    A -> B -> C;
+}
+```
+````
+
+**크기 속성:**
+- `width=0.7` → `0.7\linewidth` (비율)
+- `width=80mm` → `80mm` (절대값)
+- `height=0.5` → `0.5\textheight`
+- `scale=1.5` → TikZ 내부 스케일 배율
+
+### 코드 블록 폰트 크기 지정
+
+`fontsize` 속성으로 코드 블록의 글자 크기를 조절할 수 있습니다.
+
+````markdown
+```{.python fontsize=small}
+# 작은 글씨로 표시되는 코드
+very_long_code_here()
+```
+````
+
+지원 크기: `tiny`, `scriptsize`, `footnotesize`, `small`, `normalsize`, `large`, `Large`, `LARGE`, `huge`, `Huge`
+
+## 출력 구조
+
+```
+output/
+├── week01.with_graphs.md   # 전처리된 Markdown
+├── week01.tex              # pandoc 생성 Beamer 소스
+├── week01.pdf              # 최종 PDF 슬라이드
+├── preamble-ko.inc.tex     # 주입된 preamble
+└── graphs/
+    ├── <sha1>.dot          # DOT 소스
+    └── <sha1>.tex          # TikZ 변환 결과
+```
+
+## 슬라이드 스타일
+
+- 테마: [Metropolis](https://github.com/matze/mtheme)
+- 강조색: `#B71C1C` (딥 레드)
+- 진행바: 프레임 제목 하단
+- 로고: 슬라이드 좌하단 고정 (제목 슬라이드 제외)
+- 한글 지원: `kotex` (LuaLaTeX)

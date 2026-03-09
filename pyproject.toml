@@ -1,12 +1,12 @@
 [build-system]
-requires = ["setuptools>=61.0"]
-build-backend = "setuptools.backends.legacy:build"
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "mkslide-hoseo"
 version = "0.1.0"
 description = "Markdown to Beamer PDF slide converter for Hoseo University"
-requires-python = ">=3.8"
+requires-python = ">=3.12"
 
 [project.scripts]
 mkslide = "mkslide.cli:main"
