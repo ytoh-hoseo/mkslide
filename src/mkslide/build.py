@@ -16,6 +16,9 @@ DEFAULT_VARS = {
     "monofont": "NanumGothicCoding",
 }
 
+# Image subdirectories copied into the tmp working dir so relative paths resolve
+IMAGE_DIRS = ("figs", "figures", "images", "img")
+
 
 def _check_deps() -> None:
     missing = [cmd for cmd in ("pandoc", "dot", "latexmk") if shutil.which(cmd) is None]
@@ -80,6 +83,12 @@ def build(md_input: str, output_dir: str = None, logo: str = None, vars: list = 
         tmp_md = tmp / f"{base}.with_graphs.md"
         tex_path = tmp / f"{base}.tex"
 
+        # Copy image subdirectories into tmp so relative paths resolve during latexmk
+        for img_dir in IMAGE_DIRS:
+            src = in_path.parent / img_dir
+            if src.is_dir():
+                shutil.copytree(src, tmp / img_dir)
+
         # 1) Preprocess: dot→PDF, fontsize, image paths
         from mkslide.preprocess import preprocess
         print(f"[1/4] Preprocessing {in_path.name} ...{note}")
@@ -135,6 +144,10 @@ def build(md_input: str, output_dir: str = None, logo: str = None, vars: list = 
             debug_graphs.mkdir(exist_ok=True)
             for f in graph_dir.iterdir():
                 shutil.copy2(f, debug_graphs / f.name)
+            for img_dir in IMAGE_DIRS:
+                src = in_path.parent / img_dir
+                if src.is_dir():
+                    shutil.copytree(src, out_dir / img_dir, dirs_exist_ok=True)
             print(f"  [debug] {out_dir / f'{base}.tex'}")
             print(f"  [debug] {out_dir / 'graphs/'}")
 
@@ -156,10 +169,11 @@ def clean(output_dir: str = None, remove_pdfs: bool = False) -> None:
         for f in out_dir.glob(pat):
             f.unlink(missing_ok=True)
 
-    # Remove debug graphs dir
-    graph_dir = out_dir / "graphs"
-    if graph_dir.exists():
-        shutil.rmtree(graph_dir)
+    # Remove debug artifact directories
+    for d in ("graphs", *IMAGE_DIRS):
+        artifact_dir = out_dir / d
+        if artifact_dir.exists():
+            shutil.rmtree(artifact_dir)
 
     if remove_pdfs:
         for f in out_dir.glob("*.pdf"):

@@ -128,12 +128,41 @@ print("Hello, World!")
 
 ### 이미지 삽입
 
-상대 경로로 이미지를 참조하면 전처리 단계에서 절대 경로로 자동 변환됩니다. Markdown 파일과 같은 디렉토리에 이미지를 두면 됩니다.
+Markdown 파일과 같은 디렉토리에 있는 이미지는 절대 경로로 자동 변환됩니다.
 
 ```markdown
 ![캡션](fig.jpg)
-![캡션](images/diagram.png){width=0.6}
+![캡션](fig.png){width=0.6}
 ```
+
+다음 이미지 하위 디렉토리는 빌드 시 자동으로 작업 디렉토리에 복사되어 상대 경로가 그대로 동작합니다.
+
+| 디렉토리 | 용도 |
+|----------|------|
+| `figs/` | LaTeX 논문 전통 |
+| `figures/` | 학술 문서 |
+| `images/` | 일반적 |
+| `img/` | 단축형 |
+
+```
+slide.md
+figs/
+├── diagram.png
+└── photo.jpg
+```
+
+```markdown
+![다이어그램](figs/diagram.png)
+![사진](figs/photo.jpg){width=0.5}
+```
+
+raw LaTeX 블록에서의 직접 참조도 동작합니다.
+
+````markdown
+```{=tex}
+\includegraphics[width=0.6\linewidth]{figs/diagram.png}
+```
+````
 
 ### DOT 그래프 삽입
 
