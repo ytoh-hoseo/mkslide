@@ -128,41 +128,86 @@ def _replace_beamer_blocks(text: str) -> str:
     Pandoc incorrectly maps these to \\begin{block} instead of the proper
     Beamer environments. Title is taken from a leading heading inside the div.
 
+    Uses a line-by-line depth-tracking parser so that nested fenced divs
+    inside the body do not confuse the closing fence detection.
+
     Syntax:
         :::{.alertblock}
         ### Optional Title
         Content here
         :::
     """
-    pattern = re.compile(
-        r"^(:{3,})\s*\{\.(?P<env>alertblock|exampleblock)[^}]*\}\s*\n"
-        r"(?P<body>.*?)\n"
-        r"\1\s*$",
-        re.DOTALL | re.MULTILINE,
+    # Matches the opening fence of an alertblock/exampleblock div.
+    # Handles both {.alertblock} and bare alertblock (no braces).
+    _open = re.compile(
+        r"^(:{3,})\s*(?:\{\.?(alertblock|exampleblock)[^}]*\}|(alertblock|exampleblock))\s*$"
     )
+    # Any fenced div opening: ::: followed by non-whitespace content
+    _any_open = re.compile(r"^:{3,}\s*\S")
+    # Any fenced div closing: ::: with only optional trailing whitespace
+    _any_close = re.compile(r"^:{3,}\s*$")
 
-    def repl(m: re.Match) -> str:
-        env = m.group("env")
-        body = m.group("body")
+    lines = text.split("\n")
+    result = []
+    i = 0
 
-        # Extract optional title from the first heading line
+    while i < len(lines):
+        m = _open.match(lines[i])
+        if not m:
+            result.append(lines[i])
+            i += 1
+            continue
+
+        env = m.group(2) or m.group(3)
+        i += 1
+        body_lines: list[str] = []
+        depth = 1
+
+        # Collect body lines until the matching closing fence
+        while i < len(lines) and depth > 0:
+            line = lines[i]
+            if _any_open.match(line):
+                depth += 1
+                body_lines.append(line)
+            elif _any_close.match(line):
+                depth -= 1
+                if depth > 0:
+                    body_lines.append(line)
+                # depth == 0: this is our closing fence; discard it
+            else:
+                body_lines.append(line)
+            i += 1
+
+        # Extract optional title from the leading heading line.
+        # Case 1: "#### My Title"  → title = "My Title"
+        # Case 2: "####" (bare, no text) → title = "", discard the line so
+        #         pandoc does not convert it to \begin{block}{} inside our env.
         title = ""
-        hm = re.match(r"#{1,6}[ \t]+(.+)", body)
-        if hm:
-            title = hm.group(1).strip()
-            body = body[hm.end():].lstrip("\n")
+        if body_lines:
+            hm = re.match(r"#{1,6}[ \t]+(.+)", body_lines[0])
+            if hm:
+                title = hm.group(1).strip()
+                body_lines = body_lines[1:]
+                while body_lines and not body_lines[0].strip():
+                    body_lines.pop(0)
+            elif re.match(r"#{1,6}[ \t]*$", body_lines[0]):
+                # Bare heading marker with no title text — discard the line.
+                body_lines = body_lines[1:]
+                while body_lines and not body_lines[0].strip():
+                    body_lines.pop(0)
 
-        return (
-            "```{=tex}\n"
-            f"\\begin{{{env}}}{{{title}}}\n"
-            "```\n"
-            f"{body}\n"
-            "```{=tex}\n"
-            f"\\end{{{env}}}\n"
-            "```"
-        )
+        body = "\n".join(body_lines)
+        result += [
+            "```{=tex}",
+            f"\\begin{{{env}}}{{{title}}}",
+            "```",
+            body,
+            "```{=tex}",
+            f"\\end{{{env}}}",
+            "```",
+        ]
 
-    return pattern.sub(repl, text)
+    return "\n".join(result)
 
 
 def _replace_fontsize_blocks(text: str) -> str:

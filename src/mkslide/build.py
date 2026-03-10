@@ -57,8 +57,14 @@ def _get_work_tmp(use_ramdisk: bool) -> Path:
     return Path(tempfile.mkdtemp(prefix="mkslide_"))
 
 
-def build(md_input: str, output_dir: str = None, logo: str = None, vars: list = None,
-          use_ramdisk: bool = True, debug: bool = False) -> None:
+def build(
+    md_input: str,
+    output_dir: str = None,
+    logo: str = None,
+    vars: list = None,
+    use_ramdisk: bool = True,
+    debug: bool = False,
+) -> None:
     _check_deps()
 
     in_path = Path(md_input).resolve()
@@ -88,16 +94,29 @@ def build(md_input: str, output_dir: str = None, logo: str = None, vars: list = 
             src = in_path.parent / img_dir
             if src.is_dir():
                 shutil.copytree(src, tmp / img_dir)
+                if debug:
+                    shutil.copytree(src, out_dir / img_dir, dirs_exist_ok=True)
 
         # 1) Preprocess: dot→PDF, fontsize, image paths
         from mkslide.preprocess import preprocess
+
         print(f"[1/4] Preprocessing {in_path.name} ...{note}")
         preprocess(str(in_path), str(tmp_md), str(graph_dir))
+        if debug:
+            shutil.copy2(tmp_md, out_dir / f"{base}.with_graphs.md")
+            debug_graphs = out_dir / "graphs"
+            debug_graphs.mkdir(exist_ok=True)
+            for f in graph_dir.iterdir():
+                shutil.copy2(f, debug_graphs / f.name)
+            print(f"  [debug] {out_dir / f'{base}.with_graphs.md'}")
+            print(f"  [debug] {out_dir / 'graphs/'}")
 
         # 2) Generate preamble with injected logo path
         print("[2/4] Generating preamble ...")
         preamble_content = PREAMBLE_TEMPLATE.read_text(encoding="utf-8")
-        preamble_content = preamble_content.replace("@@LOGO_PATH@@", _logo_latex_path(logo_path))
+        preamble_content = preamble_content.replace(
+            "@@LOGO_PATH@@", _logo_latex_path(logo_path)
+        )
         preamble_tmp = tmp / "preamble-ko.inc.tex"
         preamble_tmp.write_text(preamble_content, encoding="utf-8")
 
@@ -105,24 +124,30 @@ def build(md_input: str, output_dir: str = None, logo: str = None, vars: list = 
         print("[3/4] Running pandoc ...")
         pandoc_cmd = [
             "pandoc",
-            "-t", "beamer",
+            "-t",
+            "beamer",
             "--standalone",
             "--slide-level=2",
-            "-H", str(preamble_tmp),
+            "-H",
+            str(preamble_tmp),
         ]
         yaml_keys = _yaml_front_matter_keys(in_path)
         cli_keys = {v.split("=", 1)[0] for v in (vars or [])}
         for key, val in DEFAULT_VARS.items():
             if key not in yaml_keys and key not in cli_keys:
                 pandoc_cmd.extend(["-V", f"{key}={val}"])
-        for v in (vars or []):
+        for v in vars or []:
             pandoc_cmd.extend(["-V", v])
         pandoc_cmd.extend([str(tmp_md), "-o", str(tex_path)])
         subprocess.run(pandoc_cmd, check=True)
 
         # 4) Postprocess: remove empty frames
         from mkslide.postprocess import postprocess
+
         postprocess(str(tex_path))
+        if debug:
+            shutil.copy2(tex_path, out_dir / f"{base}.tex")
+            print(f"  [debug] {out_dir / f'{base}.tex'}")
 
         # 5) latexmk → PDF
         print(f"[4/4] Running latexmk ...{note}")
@@ -136,20 +161,6 @@ def build(md_input: str, output_dir: str = None, logo: str = None, vars: list = 
         pdf_path = out_dir / f"{base}.pdf"
         shutil.copy2(tmp / f"{base}.pdf", pdf_path)
         print(f"\nGenerated: {pdf_path}")
-
-        if debug:
-            shutil.copy2(tex_path, out_dir / f"{base}.tex")
-            shutil.copy2(tmp_md, out_dir / f"{base}.with_graphs.md")
-            debug_graphs = out_dir / "graphs"
-            debug_graphs.mkdir(exist_ok=True)
-            for f in graph_dir.iterdir():
-                shutil.copy2(f, debug_graphs / f.name)
-            for img_dir in IMAGE_DIRS:
-                src = in_path.parent / img_dir
-                if src.is_dir():
-                    shutil.copytree(src, out_dir / img_dir, dirs_exist_ok=True)
-            print(f"  [debug] {out_dir / f'{base}.tex'}")
-            print(f"  [debug] {out_dir / 'graphs/'}")
 
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
