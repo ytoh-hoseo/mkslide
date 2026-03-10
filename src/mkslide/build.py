@@ -43,6 +43,50 @@ def _yaml_front_matter_keys(md_path: Path) -> set[str]:
     return keys
 
 
+def _extract_header_includes(md_path: Path) -> list[str]:
+    """Extract and remove header-includes from the YAML front matter of md_path.
+
+    pandoc 3.x silently drops YAML header-includes for Beamer output because
+    list items are parsed as Markdown inlines, which cannot be placed in the
+    LaTeX preamble block context. We extract them here and re-inject via -H
+    flags so pandoc includes them verbatim regardless of version.
+
+    Modifies md_path in-place (removes the header-includes block from YAML).
+    Returns the extracted LaTeX strings.
+    """
+    text = md_path.read_text(encoding="utf-8")
+    fm = re.match(r"^(---[ \t]*\n)(.*?)(\n(?:---|\.\.\.)[ \t]*\n)", text, re.DOTALL)
+    if not fm:
+        return []
+
+    yaml_body = fm.group(2)
+
+    # Collect list items line-by-line; stop when we leave the indented block
+    lines = yaml_body.splitlines()
+    new_lines: list[str] = []
+    items: list[str] = []
+    i = 0
+    while i < len(lines):
+        if re.match(r"^header-includes\s*:", lines[i]):
+            i += 1  # skip the key line
+            while i < len(lines) and (not lines[i] or lines[i][0] in (" ", "\t")):
+                li = re.match(r"^\s+-\s+(.*)", lines[i])
+                if li:
+                    items.append(li.group(1).strip())
+                i += 1
+        else:
+            new_lines.append(lines[i])
+            i += 1
+
+    if not items:
+        return []
+
+    # Rewrite the file with header-includes removed from YAML
+    new_yaml = "\n".join(new_lines)
+    md_path.write_text(fm.group(1) + new_yaml + fm.group(3) + text[fm.end():], encoding="utf-8")
+    return items
+
+
 def _logo_latex_path(logo: Path) -> str:
     """Return forward-slash path without .pdf extension for LaTeX \\includegraphics."""
     s = str(logo.resolve()).replace("\\", "/")
@@ -119,12 +163,26 @@ def build(
             encoding="utf-8",
         )
 
+        # Extract header-includes from YAML and prepare as -H files.
+        # pandoc 3.x drops YAML header-includes for Beamer output (parsed as
+        # inline, not block), so we strip them from the YAML and inject via -H.
+        header_include_files: list[Path] = []
+        for idx, item in enumerate(_extract_header_includes(tmp_md)):
+            hi_file = tmp / f"header_include_{idx}.tex"
+            hi_file.write_text(item + "\n", encoding="utf-8")
+            header_include_files.append(hi_file)
+            if debug:
+                shutil.copy2(hi_file, out_dir / hi_file.name)
+                print(f"  [debug] {out_dir / hi_file.name}")
+
         # 3) Pandoc → Beamer .tex
         print("[3/4] Running pandoc ...")
         pandoc_cmd = [
             "pandoc", "-t", "beamer", "--standalone", "--slide-level=2",
             "-H", str(preamble_tmp),
         ]
+        for hi_file in header_include_files:
+            pandoc_cmd.extend(["-H", str(hi_file)])
         yaml_keys = _yaml_front_matter_keys(in_path)
         cli_keys = {v.split("=", 1)[0] for v in (pandoc_vars or [])}
         for key, val in DEFAULT_VARS.items():
@@ -167,8 +225,8 @@ def clean(output_dir: str | None = None, remove_pdfs: bool = False) -> None:
 
     print(f"Cleaning {out_dir}/ ...")
 
-    # Remove debug artifacts (tex, preprocessed md)
-    for pat in ("*.tex", "*.with_graphs.md"):
+    # Remove debug artifacts (tex, preprocessed md, header includes)
+    for pat in ("*.tex", "*.with_graphs.md", "header_include_*.tex"):
         for f in out_dir.glob(pat):
             f.unlink(missing_ok=True)
 

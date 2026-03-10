@@ -1,5 +1,5 @@
 ---
-title: "Pandoc PPTX Sanity Check"
+title: "Pandoc Markdown Beamer Sanity Check"
 subtitle: "레이아웃 · 수식 · 코드 · 다이어그램 종합 점검"
 author: "오영택"
 institute: "호서대학교 게임소프트웨어학과"
@@ -8,6 +8,8 @@ mainfont: NanumSquareRound
 monofont: NanumGothicCoding
 fontsize: 11pt
 aspectratio: 169
+header-includes:
+  - \usepackage{qrcode}
 ---
 
 # 1. 텍스트 & 서식
@@ -435,11 +437,11 @@ graph G {
 
 ## Speaker Notes 점검
 
-이 슬라이드의 notes 블록이 PPTX 변환 후 유지되는지 확인합니다.
+이 슬라이드의 notes 블록이 변환 후 유지되는지 확인합니다.
 
 ::: notes
 - Speaker notes 렌더링 점검
-- Pandoc → PPTX 변환 시 notes가 남는지 확인
+- Pandoc → PDF 변환 시 notes가 남는지 확인
 - 한글 notes도 정상 출력되는지 확인
 :::
 
@@ -460,6 +462,12 @@ graph G {
 ---
 
 빈 슬라이드: `---` 수평선으로 생성된 슬라이드입니다.
+
+## header-includes
+
+- QR Code
+
+\qrcode{https://y2h.info}
 
 ## 종합 점검 완료
 

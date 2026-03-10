@@ -244,10 +244,11 @@ output/
 ├── week01.pdf              # 최종 PDF 슬라이드 (항상 생성)
 │
 │   # --debug 시 추가 저장 (단계별로 즉시 저장, 에러 발생 시에도 확인 가능)
-├── week01.with_graphs.md   # 전처리된 Markdown  ← [1/4] 전처리 후
-├── week01.tex              # pandoc 생성 Beamer 소스  ← [3/4] pandoc 후
+├── week01.with_graphs.md   # 전처리된 Markdown            ← [1/4] 전처리 후
+├── header_include_0.tex    # YAML header-includes 항목    ← [2/4] preamble 후
+├── week01.tex              # pandoc 생성 Beamer 소스       ← [3/4] pandoc 후
 └── graphs/
-    └── <sha1>.pdf          # DOT 그래프 렌더링 결과  ← [1/4] 전처리 후
+    └── <sha1>.pdf          # DOT 그래프 렌더링 결과        ← [1/4] 전처리 후
 ```
 
 ## 슬라이드 스타일
