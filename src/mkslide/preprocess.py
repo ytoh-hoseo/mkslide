@@ -122,6 +122,49 @@ def _resolve_image_paths(text: str, md_dir: str) -> str:
     return re.sub(r"!\[([^\]]*)\]\(([^)]+)\)(\{[^}]*\})?", repl, text)
 
 
+def _replace_beamer_blocks(text: str) -> str:
+    """Convert :::{.alertblock} and :::{.exampleblock} fenced divs to raw LaTeX.
+
+    Pandoc incorrectly maps these to \\begin{block} instead of the proper
+    Beamer environments. Title is taken from a leading heading inside the div.
+
+    Syntax:
+        :::{.alertblock}
+        ### Optional Title
+        Content here
+        :::
+    """
+    pattern = re.compile(
+        r"^(:{3,})\s*\{\.(?P<env>alertblock|exampleblock)[^}]*\}\s*\n"
+        r"(?P<body>.*?)\n"
+        r"\1\s*$",
+        re.DOTALL | re.MULTILINE,
+    )
+
+    def repl(m: re.Match) -> str:
+        env = m.group("env")
+        body = m.group("body")
+
+        # Extract optional title from the first heading line
+        title = ""
+        hm = re.match(r"#{1,6}\s+(.+)", body)
+        if hm:
+            title = hm.group(1).strip()
+            body = body[hm.end():].lstrip("\n")
+
+        return (
+            "```{=tex}\n"
+            f"\\begin{{{env}}}{{{title}}}\n"
+            "```\n"
+            f"{body}\n"
+            "```{=tex}\n"
+            f"\\end{{{env}}}\n"
+            "```"
+        )
+
+    return pattern.sub(repl, text)
+
+
 def _replace_fontsize_blocks(text: str) -> str:
     code_pat = re.compile(
         r"^(`{3,})\{(?P<attrs>[^\}]+)\}\n(?P<body>.*?)\n\1",
@@ -162,6 +205,7 @@ def preprocess(md_in: str, out_md: str, graphdir: str) -> None:
     in_path = pathlib.Path(md_in)
     text = in_path.read_text(encoding="utf-8")
     text = _replace_dot_blocks(text, graphdir)
+    text = _replace_beamer_blocks(text)
     text = _replace_fontsize_blocks(text)
     text = _resolve_image_paths(text, str(in_path.parent))
     pathlib.Path(out_md).write_text(text, encoding="utf-8")

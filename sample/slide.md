@@ -62,6 +62,28 @@ aspectratio: 169
 DFS는 탐색 순서가 거리와 무관하므로 **처음 발견 ≠ 최단**.
 :::
 
+## 블록 타입
+
+:::{.block}
+#### Block
+Plain Block
+:::
+
+\vspace{1em}
+
+:::{.alertblock}
+#### Alert Block
+Alert Block
+:::
+
+\vspace{1em}
+
+:::{.exampleblock}
+#### Example Block
+Example Block
+:::
+
+
 
 # 3. 2단 레이아웃
 

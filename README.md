@@ -164,6 +164,30 @@ raw LaTeX 블록에서의 직접 참조도 동작합니다.
 ```
 ````
 
+### Beamer 블록 환경
+
+pandoc이 `alertblock`/`exampleblock`을 `\begin{block}`으로 잘못 변환하는 버그를 전처리 단계에서 수정합니다.
+
+| 문법 | LaTeX 출력 |
+|------|-----------|
+| `:::{.block}` | `\begin{block}{...}` (pandoc 기본) |
+| `:::{.alertblock}` | `\begin{alertblock}{...}` ✓ |
+| `:::{.exampleblock}` | `\begin{exampleblock}{...}` ✓ |
+
+제목은 div 안의 첫 번째 heading(`#`~`######`)으로 지정하며, 생략하면 빈 제목으로 처리됩니다.
+
+```markdown
+:::{.alertblock}
+### 주의
+이 내용은 alertblock으로 렌더링됩니다.
+:::
+
+:::{.exampleblock}
+### 예시
+제목 없이도 사용 가능합니다.
+:::
+```
+
 ### DOT 그래프 삽입
 
 코드 블록 언어를 `dot`으로 지정하면 Graphviz가 PDF로 렌더링해 삽입합니다.
