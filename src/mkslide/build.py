@@ -6,6 +6,9 @@ import sys
 import tempfile
 from pathlib import Path
 
+from mkslide.postprocess import postprocess
+from mkslide.preprocess import preprocess
+
 DATA_DIR = Path(__file__).parent / "data"
 DEFAULT_LOGO = DATA_DIR / "school-mark.pdf"
 PREAMBLE_TEMPLATE = DATA_DIR / "preamble-ko.inc.tex"
@@ -26,13 +29,13 @@ def _check_deps() -> None:
         sys.exit(f"Error: missing required tools: {', '.join(missing)}")
 
 
-def _yaml_front_matter_keys(md_path: Path) -> set:
+def _yaml_front_matter_keys(md_path: Path) -> set[str]:
     """Return top-level keys defined in the YAML front matter of a markdown file."""
     text = md_path.read_text(encoding="utf-8")
     m = re.match(r"^---[ \t]*\n(.*?)\n(?:---|\.\.\.)[ \t]*\n", text, re.DOTALL)
     if not m:
         return set()
-    keys = set()
+    keys: set[str] = set()
     for line in m.group(1).splitlines():
         km = re.match(r"^([A-Za-z_][A-Za-z0-9_-]*)\s*:", line)
         if km:
@@ -43,13 +46,11 @@ def _yaml_front_matter_keys(md_path: Path) -> set:
 def _logo_latex_path(logo: Path) -> str:
     """Return forward-slash path without .pdf extension for LaTeX \\includegraphics."""
     s = str(logo.resolve()).replace("\\", "/")
-    if s.endswith(".pdf"):
-        s = s[:-4]
-    return s
+    return s.removesuffix(".pdf")
 
 
 def _get_work_tmp(use_ramdisk: bool) -> Path:
-    """Return a temp working directory: /dev/shm on Linux when available, else /tmp."""
+    """Return a temp working directory: /dev/shm on Linux when available, else system tmp."""
     if use_ramdisk and platform.system() == "Linux":
         shm = Path("/dev/shm")
         if shm.is_dir():
@@ -59,9 +60,9 @@ def _get_work_tmp(use_ramdisk: bool) -> Path:
 
 def build(
     md_input: str,
-    output_dir: str = None,
-    logo: str = None,
-    vars: list = None,
+    output_dir: str | None = None,
+    logo: str | None = None,
+    pandoc_vars: list[str] | None = None,
     use_ramdisk: bool = True,
     debug: bool = False,
 ) -> None:
@@ -80,8 +81,7 @@ def build(
 
     base = in_path.stem
     tmp = _get_work_tmp(use_ramdisk)
-    on_ramdisk = str(tmp).startswith("/dev/shm")
-    note = " (ramdisk)" if on_ramdisk else ""
+    note = " (ramdisk)" if str(tmp).startswith("/dev/shm") else ""
 
     try:
         graph_dir = tmp / "graphs"
@@ -97,9 +97,7 @@ def build(
                 if debug:
                     shutil.copytree(src, out_dir / img_dir, dirs_exist_ok=True)
 
-        # 1) Preprocess: dot→PDF, fontsize, image paths
-        from mkslide.preprocess import preprocess
-
+        # 1) Preprocess: dot→PDF, beamer blocks, fontsize, image paths
         print(f"[1/4] Preprocessing {in_path.name} ...{note}")
         preprocess(str(in_path), str(tmp_md), str(graph_dir))
         if debug:
@@ -113,37 +111,31 @@ def build(
 
         # 2) Generate preamble with injected logo path
         print("[2/4] Generating preamble ...")
-        preamble_content = PREAMBLE_TEMPLATE.read_text(encoding="utf-8")
-        preamble_content = preamble_content.replace(
-            "@@LOGO_PATH@@", _logo_latex_path(logo_path)
-        )
         preamble_tmp = tmp / "preamble-ko.inc.tex"
-        preamble_tmp.write_text(preamble_content, encoding="utf-8")
+        preamble_tmp.write_text(
+            PREAMBLE_TEMPLATE.read_text(encoding="utf-8").replace(
+                "@@LOGO_PATH@@", _logo_latex_path(logo_path)
+            ),
+            encoding="utf-8",
+        )
 
         # 3) Pandoc → Beamer .tex
         print("[3/4] Running pandoc ...")
         pandoc_cmd = [
-            "pandoc",
-            "-t",
-            "beamer",
-            "--standalone",
-            "--slide-level=2",
-            "-H",
-            str(preamble_tmp),
+            "pandoc", "-t", "beamer", "--standalone", "--slide-level=2",
+            "-H", str(preamble_tmp),
         ]
         yaml_keys = _yaml_front_matter_keys(in_path)
-        cli_keys = {v.split("=", 1)[0] for v in (vars or [])}
+        cli_keys = {v.split("=", 1)[0] for v in (pandoc_vars or [])}
         for key, val in DEFAULT_VARS.items():
             if key not in yaml_keys and key not in cli_keys:
                 pandoc_cmd.extend(["-V", f"{key}={val}"])
-        for v in vars or []:
+        for v in pandoc_vars or []:
             pandoc_cmd.extend(["-V", v])
         pandoc_cmd.extend([str(tmp_md), "-o", str(tex_path)])
         subprocess.run(pandoc_cmd, check=True)
 
         # 4) Postprocess: remove empty frames
-        from mkslide.postprocess import postprocess
-
         postprocess(str(tex_path))
         if debug:
             shutil.copy2(tex_path, out_dir / f"{base}.tex")
@@ -157,7 +149,7 @@ def build(
             check=True,
         )
 
-        # Copy results to out_dir
+        # Copy final PDF to output directory
         pdf_path = out_dir / f"{base}.pdf"
         shutil.copy2(tmp / f"{base}.pdf", pdf_path)
         print(f"\nGenerated: {pdf_path}")
@@ -166,7 +158,7 @@ def build(
         shutil.rmtree(tmp, ignore_errors=True)
 
 
-def clean(output_dir: str = None, remove_pdfs: bool = False) -> None:
+def clean(output_dir: str | None = None, remove_pdfs: bool = False) -> None:
     out_dir = Path(output_dir).resolve() if output_dir else Path.cwd() / "output"
 
     if not out_dir.exists():

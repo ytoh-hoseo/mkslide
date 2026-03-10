@@ -1,5 +1,4 @@
 import argparse
-import sys
 
 
 def main() -> None:
@@ -41,7 +40,7 @@ examples:
     )
     parser.add_argument(
         "--var",
-        dest="vars",
+        dest="pandoc_vars",
         metavar="KEY=VALUE",
         action="append",
         default=[],
@@ -66,8 +65,14 @@ examples:
         clean(output_dir=args.output_dir, remove_pdfs=args.remove_all)
     else:
         from mkslide.build import build
-        build(args.input, output_dir=args.output_dir, logo=args.logo, vars=args.vars,
-              use_ramdisk=args.use_ramdisk, debug=args.debug)
+        build(
+            args.input,
+            output_dir=args.output_dir,
+            logo=args.logo,
+            pandoc_vars=args.pandoc_vars,
+            use_ramdisk=args.use_ramdisk,
+            debug=args.debug,
+        )
 
 
 if __name__ == "__main__":

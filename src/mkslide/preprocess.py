@@ -1,8 +1,7 @@
 import hashlib
-import os
 import re
 import subprocess
-import pathlib
+from pathlib import Path
 
 ABSOLUTE_UNITS = ("mm", "cm", "pt", "in", "ex", "em")
 VALID_SIZES = {
@@ -35,6 +34,7 @@ def parse_dim_attr(attrs: str, key: str) -> str:
 
 
 def parse_float_attr(attrs: str, key: str, default: float) -> float:
+    """Parse a named float attribute from an attribute string."""
     m = re.search(rf"\b{re.escape(key)}\s*=\s*([0-9]*\.?[0-9]+)\b", attrs or "")
     if not m:
         return default
@@ -45,11 +45,15 @@ def parse_float_attr(attrs: str, key: str, default: float) -> float:
 
 
 def _ensure_pdf(dot_src: str, h: str, graphdir: str) -> None:
-    pdf_path = os.path.join(graphdir, f"{h}.pdf")
-    if os.path.exists(pdf_path):
+    """Render *dot_src* to a PDF file named *h*.pdf inside *graphdir*.
+
+    Skips rendering if the file already exists (content-addressed cache).
+    """
+    pdf_path = Path(graphdir) / f"{h}.pdf"
+    if pdf_path.exists():
         return
     p = subprocess.run(
-        ["dot", "-Tpdf", "-o", pdf_path],
+        ["dot", "-Tpdf", "-o", str(pdf_path)],
         input=dot_src, capture_output=True, text=True,
     )
     if p.returncode != 0:
@@ -57,6 +61,7 @@ def _ensure_pdf(dot_src: str, h: str, graphdir: str) -> None:
 
 
 def _replace_dot_blocks(text: str, graphdir: str) -> str:
+    """Replace ```{.dot ...} fenced code blocks with \\includegraphics LaTeX."""
     pattern = re.compile(
         r"```(?:\{\.dot(?P<attrs>[^\}]*)\}|dot)\s*\n(?P<body>.*?)\n```",
         re.DOTALL,
@@ -105,8 +110,8 @@ def _replace_dot_blocks(text: str, graphdir: str) -> str:
 def _resolve_image_paths(text: str, md_dir: str) -> str:
     """Rewrite relative image paths to absolute paths based on the source markdown directory.
 
-    Needed because the preprocessed .md is written to output/, so relative paths
-    would be resolved against output/ by both pandoc and latexmk.
+    Needed because the preprocessed .md is written to a temp dir, so relative
+    paths would be resolved against that temp dir by both pandoc and latexmk.
     """
     def repl(m: re.Match) -> str:
         alt = m.group(1)
@@ -114,9 +119,8 @@ def _resolve_image_paths(text: str, md_dir: str) -> str:
         attrs = m.group(3) or ""
         if path.startswith(("http://", "https://", "/", "\\")):
             return m.group(0)
-        abs_path = pathlib.Path(md_dir) / path
         # LaTeX/pandoc expect forward slashes
-        fwd = str(abs_path.resolve()).replace("\\", "/")
+        fwd = str((Path(md_dir) / path).resolve()).replace("\\", "/")
         return f"![{alt}]({fwd}){attrs}"
 
     return re.sub(r"!\[([^\]]*)\]\(([^)]+)\)(\{[^}]*\})?", repl, text)
@@ -131,24 +135,21 @@ def _replace_beamer_blocks(text: str) -> str:
     Uses a line-by-line depth-tracking parser so that nested fenced divs
     inside the body do not confuse the closing fence detection.
 
-    Syntax:
-        :::{.alertblock}
-        ### Optional Title
-        Content here
-        :::
+    Rendering depends on the heading pattern:
+      - "#### Title"  → full block with title bar
+      - "####" (bare) + body → thin colored bar + body (no empty title bar)
+      - "####" (bare) alone  → thin colored separator line only
+      - no heading + body    → full block with empty title
     """
-    # Matches the opening fence of an alertblock/exampleblock div.
-    # Handles both {.alertblock} and bare alertblock (no braces).
+    # Opening fence: handles {.alertblock}, {alertblock}, bare alertblock
     _open = re.compile(
         r"^(:{3,})\s*(?:\{\.?(alertblock|exampleblock)[^}]*\}|(alertblock|exampleblock))\s*$"
     )
-    # Any fenced div opening: ::: followed by non-whitespace content
-    _any_open = re.compile(r"^:{3,}\s*\S")
-    # Any fenced div closing: ::: with only optional trailing whitespace
-    _any_close = re.compile(r"^:{3,}\s*$")
+    _any_open = re.compile(r"^:{3,}\s*\S")   # inner fenced div opening
+    _any_close = re.compile(r"^:{3,}\s*$")   # any fenced div closing
 
     lines = text.split("\n")
-    result = []
+    result: list[str] = []
     i = 0
 
     while i < len(lines):
@@ -173,45 +174,42 @@ def _replace_beamer_blocks(text: str) -> str:
                 depth -= 1
                 if depth > 0:
                     body_lines.append(line)
-                # depth == 0: this is our closing fence; discard it
+                # depth == 0: matching closing fence — discard it
             else:
                 body_lines.append(line)
             i += 1
 
         # Extract optional title from the leading heading line.
-        # Case 1: "#### My Title"  → title = "My Title"
-        # Case 2: "####" (bare, no text) → title = "", discard the line so
-        #         pandoc does not convert it to \begin{block}{} inside our env.
+        # "####" alone (no text) is discarded so pandoc cannot turn it into
+        # \begin{block}{} inside our environment.
         title = ""
         if body_lines:
             hm = re.match(r"#{1,6}[ \t]+(.+)", body_lines[0])
             if hm:
                 title = hm.group(1).strip()
                 body_lines = body_lines[1:]
-                while body_lines and not body_lines[0].strip():
-                    body_lines.pop(0)
             elif re.match(r"#{1,6}[ \t]*$", body_lines[0]):
-                # Bare heading marker with no title text — discard the line.
-                body_lines = body_lines[1:]
-                while body_lines and not body_lines[0].strip():
-                    body_lines.pop(0)
+                body_lines = body_lines[1:]  # bare marker, no title text
+            # Strip leading blank lines after consuming the heading
+            while body_lines and not body_lines[0].strip():
+                body_lines.pop(0)
 
         body = "\n".join(body_lines)
+
+        # Beamer color names for this environment
         t_box = "block title alerted" if env == "alertblock" else "block title example"
         b_box = "block body alerted" if env == "alertblock" else "block body example"
+        # Thin colored bar (1.5 pt) — reused for both the separator and no-title cases
+        thin_bar = rf"\begin{{beamercolorbox}}[wd=\linewidth,dp=0.25ex,ht=1.5pt]{{{t_box}}}\end{{beamercolorbox}}"
+
         if not body.strip():
-            # Empty body → draw a thin colored rule using the block title color
-            # (matches the alertblock/exampleblock title bar color exactly).
-            result += [
-                "```{=tex}",
-                rf"\begin{{beamercolorbox}}[wd=\linewidth,dp=0.25ex,ht=1.5pt]{{{t_box}}}\end{{beamercolorbox}}",
-                "```",
-            ]
+            # No body → colored separator line only
+            result += ["```{=tex}", thin_bar, "```"]
         elif not title:
-            # Body present but no title → thin colored bar + body in matching color box.
+            # Body without title → thin bar + body in color box
             result += [
                 "```{=tex}",
-                rf"\begin{{beamercolorbox}}[wd=\linewidth,dp=0.25ex,ht=1.5pt]{{{t_box}}}\end{{beamercolorbox}}",
+                thin_bar,
                 rf"\begin{{beamercolorbox}}[wd=\linewidth,sep=0.5em]{{{b_box}}}",
                 "```",
                 body,
@@ -220,6 +218,7 @@ def _replace_beamer_blocks(text: str) -> str:
                 "```",
             ]
         else:
+            # Full block with title
             result += [
                 "```{=tex}",
                 f"\\begin{{{env}}}{{{title}}}",
@@ -234,6 +233,7 @@ def _replace_beamer_blocks(text: str) -> str:
 
 
 def _replace_fontsize_blocks(text: str) -> str:
+    """Wrap code blocks that carry a fontsize= attribute in LaTeX \\begingroup/\\endgroup."""
     code_pat = re.compile(
         r"^(`{3,})\{(?P<attrs>[^\}]+)\}\n(?P<body>.*?)\n\1",
         re.DOTALL | re.MULTILINE,
@@ -267,13 +267,17 @@ def _replace_fontsize_blocks(text: str) -> str:
 
 
 def preprocess(md_in: str, out_md: str, graphdir: str) -> None:
-    """Preprocess markdown: dot blocks → TikZ, fontsize attrs → LaTeX wrappers,
-    relative image paths → absolute paths."""
-    os.makedirs(graphdir, exist_ok=True)
-    in_path = pathlib.Path(md_in)
+    """Preprocess markdown before pandoc:
+      - dot code blocks → Graphviz PDF + \\includegraphics
+      - alertblock/exampleblock fenced divs → raw LaTeX Beamer environments
+      - fontsize= attributes on code blocks → LaTeX \\begingroup wrappers
+      - relative image paths → absolute paths
+    """
+    Path(graphdir).mkdir(parents=True, exist_ok=True)
+    in_path = Path(md_in)
     text = in_path.read_text(encoding="utf-8")
     text = _replace_dot_blocks(text, graphdir)
     text = _replace_beamer_blocks(text)
     text = _replace_fontsize_blocks(text)
     text = _resolve_image_paths(text, str(in_path.parent))
-    pathlib.Path(out_md).write_text(text, encoding="utf-8")
+    Path(out_md).write_text(text, encoding="utf-8")
