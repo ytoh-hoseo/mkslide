@@ -147,7 +147,7 @@ def _replace_beamer_blocks(text: str) -> str:
 
         # Extract optional title from the first heading line
         title = ""
-        hm = re.match(r"#{1,6}\s+(.+)", body)
+        hm = re.match(r"#{1,6}[ \t]+(.+)", body)
         if hm:
             title = hm.group(1).strip()
             body = body[hm.end():].lstrip("\n")
