@@ -197,15 +197,38 @@ def _replace_beamer_blocks(text: str) -> str:
                     body_lines.pop(0)
 
         body = "\n".join(body_lines)
-        result += [
-            "```{=tex}",
-            f"\\begin{{{env}}}{{{title}}}",
-            "```",
-            body,
-            "```{=tex}",
-            f"\\end{{{env}}}",
-            "```",
-        ]
+        t_box = "block title alerted" if env == "alertblock" else "block title example"
+        b_box = "block body alerted" if env == "alertblock" else "block body example"
+        if not body.strip():
+            # Empty body → draw a thin colored rule using the block title color
+            # (matches the alertblock/exampleblock title bar color exactly).
+            result += [
+                "```{=tex}",
+                rf"\begin{{beamercolorbox}}[wd=\linewidth,dp=0.25ex,ht=1.5pt]{{{t_box}}}\end{{beamercolorbox}}",
+                "```",
+            ]
+        elif not title:
+            # Body present but no title → thin colored bar + body in matching color box.
+            result += [
+                "```{=tex}",
+                rf"\begin{{beamercolorbox}}[wd=\linewidth,dp=0.25ex,ht=1.5pt]{{{t_box}}}\end{{beamercolorbox}}",
+                rf"\begin{{beamercolorbox}}[wd=\linewidth,sep=0.5em]{{{b_box}}}",
+                "```",
+                body,
+                "```{=tex}",
+                r"\end{beamercolorbox}",
+                "```",
+            ]
+        else:
+            result += [
+                "```{=tex}",
+                f"\\begin{{{env}}}{{{title}}}",
+                "```",
+                body,
+                "```{=tex}",
+                f"\\end{{{env}}}",
+                "```",
+            ]
 
     return "\n".join(result)
 

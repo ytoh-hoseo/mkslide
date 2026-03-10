@@ -83,6 +83,37 @@ Alert Block
 Example Block
 :::
 
+## 제목없는 블록
+
+:::{.block}
+Untitled Block
+:::
+
+\vspace{1em}
+
+:::{.alertblock}
+Untitled Alert Block
+:::
+
+\vspace{1em}
+
+:::{.exampleblock}
+Untitled Example Block
+:::
+
+## 빈 제목만 있는 블록
+
+- Alert Block `####`
+:::{.alertblock}
+####
+:::
+
+\vspace{1em}
+
+- Example Block `####`
+:::{.exampleblock}
+####
+:::
 
 
 # 3. 2단 레이아웃
