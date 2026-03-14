@@ -93,13 +93,51 @@ def _logo_latex_path(logo: Path) -> str:
     return s.removesuffix(".pdf")
 
 
-def _get_work_tmp(use_ramdisk: bool) -> Path:
-    """Return a temp working directory: /dev/shm on Linux when available, else system tmp."""
-    if use_ramdisk and platform.system() == "Linux":
-        shm = Path("/dev/shm")
-        if shm.is_dir():
-            return Path(tempfile.mkdtemp(dir=shm, prefix="mkslide_"))
-    return Path(tempfile.mkdtemp(prefix="mkslide_"))
+def _get_work_tmp(use_ramdisk: bool) -> tuple[Path, str | None]:
+    """Return (temp_dir, mac_ramdisk_device_or_None).
+
+    Uses /dev/shm on Linux, hdiutil RAM disk on macOS, or system tmp otherwise.
+    The caller is responsible for detaching the macOS RAM disk (via hdiutil detach)
+    when done.
+    """
+    if use_ramdisk:
+        system = platform.system()
+        if system == "Linux":
+            shm = Path("/dev/shm")
+            if shm.is_dir():
+                return Path(tempfile.mkdtemp(dir=shm, prefix="mkslide_")), None
+        elif system == "Darwin":
+            ramdisk = _create_macos_ramdisk()
+            if ramdisk is not None:
+                mount_point, device = ramdisk
+                return Path(tempfile.mkdtemp(dir=mount_point, prefix="mkslide_")), device
+    return Path(tempfile.mkdtemp(prefix="mkslide_")), None
+
+
+_MACOS_RAMDISK_LABEL = "mkslide_ram"
+_MACOS_RAMDISK_SIZE_MB = 512
+
+
+def _create_macos_ramdisk() -> tuple[Path, str] | None:
+    """Create a RAM disk on macOS using hdiutil. Returns (mount_point, device) or None."""
+    sectors = _MACOS_RAMDISK_SIZE_MB * 2048  # 1 MB = 2048 sectors of 512 B
+    try:
+        result = subprocess.run(
+            ["hdiutil", "attach", "-nomount", f"ram://{sectors}"],
+            capture_output=True, text=True, check=True,
+        )
+        device = result.stdout.strip()
+        subprocess.run(
+            ["diskutil", "erasevolume", "HFS+", _MACOS_RAMDISK_LABEL, device],
+            capture_output=True, check=True,
+        )
+        return Path(f"/Volumes/{_MACOS_RAMDISK_LABEL}"), device
+    except subprocess.CalledProcessError:
+        return None
+
+
+def _detach_macos_ramdisk(device: str) -> None:
+    subprocess.run(["hdiutil", "detach", device], capture_output=True)
 
 
 def build(
@@ -124,8 +162,11 @@ def build(
         sys.exit(f"Error: logo file not found: {logo_path}")
 
     base = in_path.stem
-    tmp = _get_work_tmp(use_ramdisk)
-    note = " (ramdisk)" if str(tmp).startswith("/dev/shm") else ""
+    tmp, mac_ramdisk_device = _get_work_tmp(use_ramdisk)
+    if str(tmp).startswith("/dev/shm") or mac_ramdisk_device is not None:
+        note = " (ramdisk)"
+    else:
+        note = ""
 
     try:
         graph_dir = tmp / "graphs"
@@ -214,6 +255,8 @@ def build(
 
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
+        if mac_ramdisk_device is not None:
+            _detach_macos_ramdisk(mac_ramdisk_device)
 
 
 def clean(output_dir: str | None = None, remove_pdfs: bool = False) -> None:
