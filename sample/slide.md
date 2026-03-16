@@ -4,11 +4,12 @@ subtitle: "레이아웃 · 수식 · 코드 · 다이어그램 종합 점검"
 author: "오영택"
 institute: "호서대학교 게임소프트웨어학과"
 date: 2026-03-10
-mainfont: NanumSquareRound
+mainfont: Noto Sans
 monofont: NanumGothicCoding
 fontsize: 11pt
 aspectratio: 169
 header-includes:
+  - \setmainhangulfont{NanumSquareRound}
   - \usepackage{qrcode}
 ---
 
@@ -21,6 +22,7 @@ header-includes:
     - Level 3 불릿 — BFS / DFS
 - 한글 ABC 123 혼용: 노드(Node), 엣지(Edge), 가중치(Weight)
 - **굵게**, *기울임*, `Inline Code`, [링크](https://example.com)
+- Unicode: ↑, ·, ×, ≤, ≥, εὑρίσκειν, ≤
 
 > 블록 인용(quote) 스타일을 점검합니다. 한글/영문 혼용 문장.
 
