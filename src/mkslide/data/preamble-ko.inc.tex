@@ -40,20 +40,20 @@
   \endgroup
 }
 
-% 색상 강조: 별표를 붙이면 굵게 표시
-\NewDocumentCommand{\red}{s m}{%
+% 의미 기반 강조: 별표를 붙이면 굵게 표시
+\NewDocumentCommand{\critical}{s m}{%
   \textcolor{mainred}{\IfBooleanTF{#1}{\textbf{#2}}{#2}}%
 }
-\NewDocumentCommand{\blue}{s m}{%
+\NewDocumentCommand{\concept}{s m}{%
   \textcolor{mainblue}{\IfBooleanTF{#1}{\textbf{#2}}{#2}}%
 }
-\NewDocumentCommand{\green}{s m}{%
+\NewDocumentCommand{\positive}{s m}{%
   \textcolor{maingreen}{\IfBooleanTF{#1}{\textbf{#2}}{#2}}%
 }
-\NewDocumentCommand{\orange}{s m}{%
+\NewDocumentCommand{\caution}{s m}{%
   \textcolor{mainorange}{\IfBooleanTF{#1}{\textbf{#2}}{#2}}%
 }
-\NewDocumentCommand{\gray}{s m}{%
+\NewDocumentCommand{\muted}{s m}{%
   \textcolor{maingray}{\IfBooleanTF{#1}{\textbf{#2}}{#2}}%
 }
 
