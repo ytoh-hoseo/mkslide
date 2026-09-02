@@ -9,8 +9,6 @@
 \usepackage{fontawesome}
 \usepackage[normalem]{ulem}
 
-\newcommand{\columnbar}{\hspace{0.5em}\vrule\hspace{1em}}
-
 \newfontfamily\lmfont{Latin Modern Roman}
 \AtBeginEnvironment{algorithmic}{\lmfont}
 \setemojifont{Noto Color Emoji}
@@ -19,6 +17,45 @@
 \usetheme{metropolis}
 
 \definecolor{mainred}{HTML}{B71C1C}
+\definecolor{mainblue}{HTML}{1565C0}
+\definecolor{maingreen}{HTML}{2E7D32}
+\definecolor{mainorange}{HTML}{EF6C00}
+\definecolor{maingray}{HTML}{616161}
+
+% ===== 사용자 정의 명령 =====
+
+% 세로 구분선의 좌우 간격: \columnbar[left=0.5em,right=1em]
+\pgfkeys{
+  /mkslide/columnbar/.is family,
+  /mkslide/columnbar,
+  left/.initial=0.5em,
+  right/.initial=1em,
+}
+\NewDocumentCommand{\columnbar}{O{}}{%
+  \begingroup
+  \pgfkeys{/mkslide/columnbar/.cd,#1}%
+  \hspace{\pgfkeysvalueof{/mkslide/columnbar/left}}%
+  \vrule
+  \hspace{\pgfkeysvalueof{/mkslide/columnbar/right}}%
+  \endgroup
+}
+
+% 색상 강조: 별표를 붙이면 굵게 표시
+\NewDocumentCommand{\red}{s m}{%
+  \textcolor{mainred}{\IfBooleanTF{#1}{\textbf{#2}}{#2}}%
+}
+\NewDocumentCommand{\blue}{s m}{%
+  \textcolor{mainblue}{\IfBooleanTF{#1}{\textbf{#2}}{#2}}%
+}
+\NewDocumentCommand{\green}{s m}{%
+  \textcolor{maingreen}{\IfBooleanTF{#1}{\textbf{#2}}{#2}}%
+}
+\NewDocumentCommand{\orange}{s m}{%
+  \textcolor{mainorange}{\IfBooleanTF{#1}{\textbf{#2}}{#2}}%
+}
+\NewDocumentCommand{\gray}{s m}{%
+  \textcolor{maingray}{\IfBooleanTF{#1}{\textbf{#2}}{#2}}%
+}
 
 % 전체 배경/본문
 \setbeamercolor{normal text}{fg=black,bg=white}
