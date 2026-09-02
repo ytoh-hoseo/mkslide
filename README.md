@@ -80,7 +80,7 @@ mkslide clean --output-dir /tmp/slides
 | `--output-dir DIR` | `./output` | 출력 디렉토리 |
 | `--logo PDF` | 내장 교표 | 로고 PDF 파일 경로 |
 | `--var KEY=VALUE` | — | pandoc 변수 전달 (`-V`), 반복 사용 가능 |
-| `--debug` | `False` | 각 단계 완료 시 중간 파일(`.with_graphs.md`, `.tex`, `graphs/`)을 output dir에 즉시 저장 (에러 발생 시에도 확인 가능) |
+| `--debug` | `False` | 중간 파일(`.with_graphs.md`, `.tex`, `.log`, `graphs/`)을 output dir에 저장 (`.log`는 LaTeX 실패 시에도 보존) |
 | `--no-ramdisk` | — | RAM disk 가속 비활성화 (Linux 전용) |
 | `--all` | `False` | `clean` 시 PDF도 함께 삭제 |
 
@@ -146,6 +146,24 @@ print("Hello, World!")
 \critical{반드시 직접 계산·확인하세요.}
 \concept{굵게 표시되는 핵심 개념}
 \concept[normal]{보통 굵기로 표시되는 핵심 개념}
+```
+
+#### 색상 직선 밑줄
+
+`\coloruline`은 본문 글자색을 유지하면서 직선 밑줄에만 색상을 적용합니다. 기본 밑줄 색상은 `mainred`이며 선택 인자로 다른 색상을 지정할 수 있습니다.
+
+```markdown
+\coloruline{빨간색 직선 밑줄}
+\coloruline[mainblue]{파란색 직선 밑줄}
+\coloruline[maingreen]{초록색 직선 밑줄}
+```
+
+자주 사용하는 세 색상은 단축 명령으로도 사용할 수 있습니다.
+
+```markdown
+\reduline{빨간색 직선 밑줄}
+\blueuline{파란색 직선 밑줄}
+\greenuline{초록색 직선 밑줄}
 ```
 
 #### 색상 물결 밑줄
@@ -338,6 +356,7 @@ output/
 ├── week01.with_graphs.md   # 전처리된 Markdown            ← [1/4] 전처리 후
 ├── header_include_0.tex    # YAML header-includes 항목    ← [2/4] preamble 후
 ├── week01.tex              # pandoc 생성 Beamer 소스       ← [3/4] pandoc 후
+├── week01.log              # LaTeX 컴파일 로그             ← [4/4] 성공/실패 후
 └── graphs/
     └── <sha1>.pdf          # DOT 그래프 렌더링 결과        ← [1/4] 전처리 후
 ```

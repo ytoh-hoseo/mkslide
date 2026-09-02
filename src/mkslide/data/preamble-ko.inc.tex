@@ -70,8 +70,16 @@
   \mkslideemphasis{#1}{maingray}{#2}%
 }
 
-% 글자색은 유지하고 물결 밑줄에만 색상 적용
+% 글자색은 유지하고 밑줄에만 색상 적용
 \makeatletter
+\NewDocumentCommand{\coloruline}{O{mainred} m}{%
+  \leavevmode\bgroup
+  \UL@setULdepth
+  \markoverwith{%
+    \lower\ULdepth\hbox{\color{#1}\rule{0.5em}{\ULthickness}}%
+  }%
+  \ULon{#2}%
+}
 \NewDocumentCommand{\coloruwave}{O{mainred} m}{%
   \leavevmode\bgroup
   \ifdim\ULdepth=\maxdimen
@@ -85,6 +93,9 @@
 \makeatother
 
 % 자주 쓰는 밑줄 색상 단축 명령
+\NewDocumentCommand{\reduline}{m}{\coloruline[mainred]{#1}}
+\NewDocumentCommand{\blueuline}{m}{\coloruline[mainblue]{#1}}
+\NewDocumentCommand{\greenuline}{m}{\coloruline[maingreen]{#1}}
 \NewDocumentCommand{\reduwave}{m}{\coloruwave[mainred]{#1}}
 \NewDocumentCommand{\blueuwave}{m}{\coloruwave[mainblue]{#1}}
 \NewDocumentCommand{\greenuwave}{m}{\coloruwave[maingreen]{#1}}

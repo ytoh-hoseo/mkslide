@@ -254,6 +254,15 @@ def build(
         print(f"\nGenerated: {pdf_path}")
 
     finally:
+        if debug:
+            latex_log = tmp / f"{base}.log"
+            if latex_log.is_file():
+                debug_log = out_dir / latex_log.name
+                try:
+                    shutil.copy2(latex_log, debug_log)
+                    print(f"  [debug] {debug_log}")
+                except OSError as exc:
+                    print(f"Warning: could not save LaTeX log: {exc}", file=sys.stderr)
         shutil.rmtree(tmp, ignore_errors=True)
         if mac_ramdisk_device is not None:
             _detach_macos_ramdisk(mac_ramdisk_device)
@@ -268,8 +277,8 @@ def clean(output_dir: str | None = None, remove_pdfs: bool = False) -> None:
 
     print(f"Cleaning {out_dir}/ ...")
 
-    # Remove debug artifacts (tex, preprocessed md, header includes)
-    for pat in ("*.tex", "*.with_graphs.md", "header_include_*.tex"):
+    # Remove debug artifacts (tex, log, preprocessed md, header includes)
+    for pat in ("*.tex", "*.log", "*.with_graphs.md", "header_include_*.tex"):
         for f in out_dir.glob(pat):
             f.unlink(missing_ok=True)
 

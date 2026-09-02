@@ -55,7 +55,7 @@ examples:
     parser.add_argument(
         "--debug",
         action="store_true",
-        help="Save intermediate files (.tex, graphs/) to output dir for inspection",
+        help="Save intermediate files (.tex, .log, graphs/) to output dir for inspection",
     )
 
     args = parser.parse_args()
