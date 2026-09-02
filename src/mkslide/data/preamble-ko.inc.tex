@@ -57,6 +57,25 @@
   \textcolor{maingray}{\IfBooleanTF{#1}{\textbf{#2}}{#2}}%
 }
 
+% 글자색은 유지하고 물결 밑줄에만 색상 적용
+\makeatletter
+\NewDocumentCommand{\coloruwave}{O{mainred} m}{%
+  \leavevmode\bgroup
+  \ifdim\ULdepth=\maxdimen
+    \ULdepth=3.5\p@
+  \else
+    \advance\ULdepth by 2\p@
+  \fi
+  \markoverwith{\lower\ULdepth\hbox{\color{#1}\sixly\char58}}%
+  \ULon{#2}%
+}
+\makeatother
+
+% 자주 쓰는 밑줄 색상 단축 명령
+\NewDocumentCommand{\reduwave}{m}{\coloruwave[mainred]{#1}}
+\NewDocumentCommand{\blueuwave}{m}{\coloruwave[mainblue]{#1}}
+\NewDocumentCommand{\greenuwave}{m}{\coloruwave[maingreen]{#1}}
+
 % 전체 배경/본문
 \setbeamercolor{normal text}{fg=black,bg=white}
 

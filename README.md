@@ -147,6 +147,24 @@ print("Hello, World!")
 \concept*{이번 장의 핵심 개념}
 ```
 
+#### 색상 물결 밑줄
+
+`\coloruwave`는 본문 글자색을 유지하면서 물결 밑줄에만 색상을 적용합니다. 기본 밑줄 색상은 `mainred`이며 선택 인자로 다른 색상을 지정할 수 있습니다.
+
+```markdown
+\coloruwave{빨간색 물결 밑줄}
+\coloruwave[mainblue]{파란색 물결 밑줄}
+\coloruwave[maingreen]{초록색 물결 밑줄}
+```
+
+자주 사용하는 세 색상은 단축 명령으로도 사용할 수 있습니다.
+
+```markdown
+\reduwave{빨간색 물결 밑줄}
+\blueuwave{파란색 물결 밑줄}
+\greenuwave{초록색 물결 밑줄}
+```
+
 #### 세로 구분선
 
 `\columnbar`는 세로 구분선을 삽입합니다. 기본 좌우 간격은 각각 `0.5em`, `1em`이며 `left`, `right` 옵션으로 개별 조정할 수 있습니다.
