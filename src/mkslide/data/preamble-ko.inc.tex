@@ -8,6 +8,7 @@
 \usepackage{algpseudocode}
 \usepackage{fontawesome}
 \usepackage[normalem]{ulem}
+\usepackage{etoolbox}
 
 \newfontfamily\lmfont{Latin Modern Roman}
 \AtBeginEnvironment{algorithmic}{\lmfont}
@@ -40,21 +41,33 @@
   \endgroup
 }
 
-% 의미 기반 강조: 별표를 붙이면 굵게 표시
-\NewDocumentCommand{\critical}{s m}{%
-  \textcolor{mainred}{\IfBooleanTF{#1}{\textbf{#2}}{#2}}%
+% 의미 기반 강조: 기본은 bold, [normal] 옵션으로 보통 굵기 지정
+\NewDocumentCommand{\mkslideemphasis}{m m m}{%
+  \ifstrequal{#1}{bold}{%
+    \textcolor{#2}{\textbf{#3}}%
+  }{%
+    \ifstrequal{#1}{normal}{%
+      \textcolor{#2}{#3}%
+    }{%
+      \PackageError{mkslide}{Unknown emphasis style '#1'}%
+        {Use 'bold' or 'normal'.}%
+    }%
+  }%
 }
-\NewDocumentCommand{\concept}{s m}{%
-  \textcolor{mainblue}{\IfBooleanTF{#1}{\textbf{#2}}{#2}}%
+\NewDocumentCommand{\critical}{O{bold} m}{%
+  \mkslideemphasis{#1}{mainred}{#2}%
 }
-\NewDocumentCommand{\positive}{s m}{%
-  \textcolor{maingreen}{\IfBooleanTF{#1}{\textbf{#2}}{#2}}%
+\NewDocumentCommand{\concept}{O{bold} m}{%
+  \mkslideemphasis{#1}{mainblue}{#2}%
 }
-\NewDocumentCommand{\caution}{s m}{%
-  \textcolor{mainorange}{\IfBooleanTF{#1}{\textbf{#2}}{#2}}%
+\NewDocumentCommand{\positive}{O{bold} m}{%
+  \mkslideemphasis{#1}{maingreen}{#2}%
 }
-\NewDocumentCommand{\muted}{s m}{%
-  \textcolor{maingray}{\IfBooleanTF{#1}{\textbf{#2}}{#2}}%
+\NewDocumentCommand{\caution}{O{bold} m}{%
+  \mkslideemphasis{#1}{mainorange}{#2}%
+}
+\NewDocumentCommand{\muted}{O{bold} m}{%
+  \mkslideemphasis{#1}{maingray}{#2}%
 }
 
 % 글자색은 유지하고 물결 밑줄에만 색상 적용
