@@ -6,10 +6,15 @@
 \usepackage[absolute,overlay]{textpos}
 \usepackage{algorithm}
 \usepackage{algpseudocode}
+\usepackage{fontawesome}
+\usepackage[normalem]{ulem}
+
+\newcommand{\columnbar}{\hspace{0.5em}\vrule\hspace{1em}}
 
 \newfontfamily\lmfont{Latin Modern Roman}
 \AtBeginEnvironment{algorithmic}{\lmfont}
 \setemojifont{Noto Color Emoji}
+\setmainhangulfont{NanumSquareRound}
 
 \usetheme{metropolis}
 
@@ -75,12 +80,12 @@
 \makeatletter
 \setbeamertemplate{block begin}{%
   \@ifempty\insertblocktitle{}{%
-    \begin{beamercolorbox}[sep=0.5ex]{block title}%
+    \begin{beamercolorbox}[sep=0.5ex,vmode]{block title}%
       \usebeamerfont{block title}\insertblocktitle%
     \end{beamercolorbox}%
     \nointerlineskip%
   }%
-  \begin{beamercolorbox}[sep=1ex]{block body}%
+  \begin{beamercolorbox}[sep=1ex,vmode]{block body}%
     \usebeamerfont{block body}%
 }
 \setbeamertemplate{block end}{%

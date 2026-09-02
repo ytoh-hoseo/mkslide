@@ -126,6 +126,112 @@ def _resolve_image_paths(text: str, md_dir: str) -> str:
     return re.sub(r"!\[([^\]]*)\]\(([^)]+)\)(\{[^}]*\})?", repl, text)
 
 
+def _replace_block_options(text: str) -> str:
+    """Apply common options to Beamer block fenced divs.
+
+    Supported options are ``.center`` and ``indent=<dimension>``.  A
+    depth-tracking parser is used so nested fenced divs remain intact.
+    """
+    _open = re.compile(
+        r"^(?P<fence>:{3,})(?P<spacing>[ \t]*)"
+        r"\{(?P<attrs>[^}]*)\}(?P<trailing>[ \t]*)$"
+    )
+    _block_class = re.compile(
+        r"(?:^|[ \t])\.(?:block|alertblock|exampleblock)(?=[ \t]|$)"
+    )
+    _center = re.compile(r"(?:^|[ \t]+)\.center(?=[ \t]|$)")
+    unit_pattern = "|".join(ABSOLUTE_UNITS)
+    _indent = re.compile(
+        rf"(?:^|[ \t]+)indent[ \t]*=[ \t]*"
+        rf"(?P<value>[0-9]*\.?[0-9]+(?:{unit_pattern}))(?=[ \t]|$)"
+    )
+    _any_open = re.compile(r"^:{3,}\s*\S")
+    _any_close = re.compile(r"^:{3,}\s*$")
+
+    lines = text.split("\n")
+    result: list[str] = []
+    i = 0
+
+    while i < len(lines):
+        m = _open.match(lines[i])
+        if not m or not _block_class.search(m.group("attrs")):
+            result.append(lines[i])
+            i += 1
+            continue
+
+        attrs = m.group("attrs")
+        center = _center.search(attrs)
+        indent = _indent.search(attrs)
+        if not center and not indent:
+            result.append(lines[i])
+            i += 1
+            continue
+
+        # Locate this div's matching fence before changing anything.  If it is
+        # unclosed, leave the source untouched rather than emitting an
+        # unterminated LaTeX group.
+        depth = 1
+        j = i + 1
+        while j < len(lines) and depth > 0:
+            if _any_open.match(lines[j]):
+                depth += 1
+            elif _any_close.match(lines[j]):
+                depth -= 1
+            j += 1
+        if depth:
+            result.extend(lines[i:])
+            break
+
+        clean_attrs = _center.sub("", attrs)
+        clean_attrs = _indent.sub("", clean_attrs).strip()
+        opening = (
+            f'{m.group("fence")}{m.group("spacing")}{{{clean_attrs}}}'
+            f'{m.group("trailing")}'
+        )
+
+        latex = [r"\begingroup"]
+        if center:
+            latex += [
+                r"\centering",
+                # Pandoc's highlighted code uses a full-width Verbatim
+                # environment, which ignores \centering.  Make it a
+                # natural-width box locally when highlighting is available.
+                r"\ifdefined\Highlighting",
+                (r"\RecustomVerbatimEnvironment{Highlighting}{BVerbatim}"
+                 r"{commandchars=\\\{\}}"),
+                r"\fi",
+            ]
+        if indent:
+            value = indent.group("value")
+            latex += [
+                rf"\setlength{{\leftskip}}{{{value}}}",
+                rf"\setlength{{\rightskip}}{{{value}}}",
+            ]
+
+        body_lines = lines[i + 1:j - 1]
+        # Keep a leading heading ahead of the injected raw block: Pandoc uses
+        # it as the title of .block, and _replace_beamer_blocks() does the same
+        # for alert/example blocks.
+        heading: list[str] = []
+        if body_lines and re.match(r"#{1,6}(?:[ \t]+.*)?$", body_lines[0]):
+            heading = body_lines[:1]
+            body_lines = body_lines[1:]
+
+        # Options have no effect without body content.  Avoid introducing raw
+        # commands that would make an empty alert/example block look nonempty.
+        if not any(line.strip() for line in body_lines):
+            result += [opening, *heading, *body_lines, lines[j - 1]]
+            i = j
+            continue
+
+        body = _replace_block_options("\n".join(body_lines))
+        result += [opening, *heading, "```{=tex}", *latex, "```", body,
+                   "```{=tex}", r"\endgroup", "```", lines[j - 1]]
+        i = j
+
+    return "\n".join(result)
+
+
 def _replace_beamer_blocks(text: str) -> str:
     """Convert :::{.alertblock} and :::{.exampleblock} fenced divs to raw LaTeX.
 
@@ -269,6 +375,7 @@ def _replace_fontsize_blocks(text: str) -> str:
 def preprocess(md_in: str, out_md: str, graphdir: str) -> None:
     """Preprocess markdown before pandoc:
       - dot code blocks → Graphviz PDF + \\includegraphics
+      - common Beamer block options → scoped raw LaTeX commands
       - alertblock/exampleblock fenced divs → raw LaTeX Beamer environments
       - fontsize= attributes on code blocks → LaTeX \\begingroup wrappers
       - relative image paths → absolute paths
@@ -277,6 +384,7 @@ def preprocess(md_in: str, out_md: str, graphdir: str) -> None:
     in_path = Path(md_in)
     text = in_path.read_text(encoding="utf-8")
     text = _replace_dot_blocks(text, graphdir)
+    text = _replace_block_options(text)
     text = _replace_beamer_blocks(text)
     text = _replace_fontsize_blocks(text)
     text = _resolve_image_paths(text, str(in_path.parent))

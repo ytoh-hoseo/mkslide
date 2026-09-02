@@ -6,7 +6,7 @@ Markdown 파일을 호서대학교 스타일의 Beamer PDF 슬라이드로 변�
 
 ```
 Markdown (.md)
-  → [전처리] dot 블록 → PDF, fontsize 속성 → LaTeX 래퍼, 이미지 상대경로 → 절대경로
+  → [전처리] dot 블록 → PDF, block 옵션/fontsize 속성 → LaTeX 래퍼, 이미지 상대경로 → 절대경로
   → [pandoc] Beamer .tex 생성
   → [후처리] 빈 프레임 제거
   → [latexmk] PDF 컴파일
@@ -203,6 +203,46 @@ pandoc이 `alertblock`/`exampleblock`을 `\begin{block}`으로 잘못 변환하�
 exampleblock도 동일한 규칙이 적용됩니다.
 :::
 ```
+
+#### 공통 block 옵션
+
+`.block`, `.alertblock`, `.exampleblock`에는 다음 옵션을 공통으로 사용할 수 있습니다. 옵션의 효과는 해당 block 내부로만 제한됩니다.
+
+| 옵션 | 설명 |
+|---|---|
+| `.center` | 본문을 가운데 정렬합니다. 언어가 지정된 fenced code block은 코드 덩어리의 실제 폭을 기준으로 가운데 배치됩니다. |
+| `indent=<크기>` | 본문 전체에 지정한 크기만큼 좌우 여백을 적용합니다. |
+
+`indent`의 크기 단위로 `mm`, `cm`, `pt`, `in`, `ex`, `em`을 지원합니다. 두 옵션은 함께 사용할 수 있으며, 기존 제목 heading 처리에는 영향을 주지 않습니다.
+
+````markdown
+:::{.block .center}
+가운데 정렬된 내용
+:::
+
+:::{.alertblock .center indent=1em}
+#### 주의
+가운데 정렬과 1em 좌우 여백이 함께 적용됩니다.
+:::
+
+:::{.exampleblock indent=2em}
+좌우에 2em 여백이 적용됩니다.
+:::
+````
+
+코드 블록도 `.center`로 가운데 배치할 수 있습니다.
+
+````markdown
+## 값에 이름 붙이기와 기본 연산
+
+:::{.block .center}
+```python
+x = 3
+y = 5
+x + y
+```
+:::
+````
 
 ### DOT 그래프 삽입
 
