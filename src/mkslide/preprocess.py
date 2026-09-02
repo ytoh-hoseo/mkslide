@@ -207,6 +207,16 @@ def _replace_block_options(text: str) -> str:
                 rf"\setlength{{\leftskip}}{{{value}}}",
                 rf"\setlength{{\rightskip}}{{{value}}}",
             ]
+            if not center:
+                # fancyvrb resets paragraph skips for highlighted code, so
+                # pass the same indentation to its own margin settings.
+                latex += [
+                    r"\ifdefined\Highlighting",
+                    (r"\RecustomVerbatimEnvironment{Highlighting}{Verbatim}"
+                     rf"{{commandchars=\\\{{\}},xleftmargin={value},"
+                     rf"xrightmargin={value}}}"),
+                    r"\fi",
+                ]
 
         body_lines = lines[i + 1:j - 1]
         # Keep a leading heading ahead of the injected raw block: Pandoc uses

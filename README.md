@@ -213,16 +213,16 @@ exampleblock도 동일한 규칙이 적용됩니다.
 | `.center` | 본문을 가운데 정렬합니다. 언어가 지정된 fenced code block은 코드 덩어리의 실제 폭을 기준으로 가운데 배치됩니다. |
 | `indent=<크기>` | 본문 전체에 지정한 크기만큼 좌우 여백을 적용합니다. |
 
-`indent`의 크기 단위로 `mm`, `cm`, `pt`, `in`, `ex`, `em`을 지원합니다. 두 옵션은 함께 사용할 수 있으며, 기존 제목 heading 처리에는 영향을 주지 않습니다.
+`indent`의 크기 단위로 `mm`, `cm`, `pt`, `in`, `ex`, `em`을 지원합니다. `.center`와 `indent`는 각각 독립적으로 사용하세요. 가운데 정렬된 내용에는 좌우 `indent`의 시각적 효과가 없거나 기대와 다를 수 있으므로 두 옵션을 함께 사용하는 것은 권장하지 않습니다. 두 옵션 모두 기존 제목 heading 처리에는 영향을 주지 않습니다.
 
 ````markdown
 :::{.block .center}
 가운데 정렬된 내용
 :::
 
-:::{.alertblock .center indent=1em}
+:::{.alertblock indent=1em}
 #### 주의
-가운데 정렬과 1em 좌우 여백이 함께 적용됩니다.
+좌우에 1em 여백이 적용됩니다.
 :::
 
 :::{.exampleblock indent=2em}
