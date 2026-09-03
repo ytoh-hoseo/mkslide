@@ -23,6 +23,17 @@
 \definecolor{mainorange}{HTML}{EF6C00}
 \definecolor{maingray}{HTML}{616161}
 
+% Markdown 링크와 직접 작성한 \href에 같은 밑줄 스타일을 적용한다.
+% 링크 색상은 Pandoc이 hypersetup을 만들 때 build.py의 변수로 지정한다.
+\AtBeginDocument{%
+  \NewCommandCopy{\mkslideoriginalhref}{\href}%
+  \RenewDocumentCommand{\href}{o m m}{%
+    \IfNoValueTF{#1}%
+      {\mkslideoriginalhref{#2}{\uline{#3}}}%
+      {\mkslideoriginalhref[#1]{#2}{\uline{#3}}}%
+  }%
+}
+
 % ===== 사용자 정의 명령 =====
 
 % 세로 구분선의 좌우 간격: \columnbar[left=0.5em,right=1em]

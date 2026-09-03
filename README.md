@@ -111,6 +111,8 @@ mkslide week01.md --var mainfont=NanumSquareRound --var aspectratio=43
 - `#` : 섹션 구분
 - `##` : 슬라이드(프레임) 제목
 
+Markdown 링크(`[텍스트](URL)`)와 직접 작성한 `\href{URL}{텍스트}`는 기본적으로 파란색 밑줄로 표시됩니다. URL 자체는 파란색으로, 목차를 비롯한 문서 내부 링크는 검은색으로 표시됩니다. 링크 색상은 YAML front matter나 `--var`의 `urlcolor`, `linkcolor`, `citecolor`, `filecolor`로 변경할 수 있습니다.
+
 ```markdown
 # 1장. 소개
 

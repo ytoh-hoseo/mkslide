@@ -17,6 +17,11 @@ PREAMBLE_TEMPLATE = DATA_DIR / "preamble-ko.inc.tex"
 DEFAULT_VARS = {
     "mainfont": "NanumSquareRound",
     "monofont": "NanumGothicCoding",
+    "colorlinks": "true",
+    "linkcolor": "black",
+    "filecolor": "mainblue",
+    "citecolor": "black",
+    "urlcolor": "mainblue",
 }
 
 # Image subdirectories copied into the tmp working dir so relative paths resolve
