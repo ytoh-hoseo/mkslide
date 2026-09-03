@@ -190,6 +190,14 @@ def _replace_block_options(text: str) -> str:
         )
 
         latex = [r"\begingroup"]
+        latex_end: list[str] = []
+        if indent:
+            value = indent.group("value")
+            # An outer list narrows \linewidth for every kind of body content.
+            # Unlike \leftskip/\rightskip, its margins survive when Pandoc
+            # emits a nested itemize or enumerate environment.
+            latex.append(rf"\begin{{mkslideindent}}{{{value}}}")
+            latex_end.append(r"\end{mkslideindent}")
         if center:
             latex += [
                 r"\centering",
@@ -201,22 +209,6 @@ def _replace_block_options(text: str) -> str:
                  r"{commandchars=\\\{\}}"),
                 r"\fi",
             ]
-        if indent:
-            value = indent.group("value")
-            latex += [
-                rf"\setlength{{\leftskip}}{{{value}}}",
-                rf"\setlength{{\rightskip}}{{{value}}}",
-            ]
-            if not center:
-                # fancyvrb resets paragraph skips for highlighted code, so
-                # pass the same indentation to its own margin settings.
-                latex += [
-                    r"\ifdefined\Highlighting",
-                    (r"\RecustomVerbatimEnvironment{Highlighting}{Verbatim}"
-                     rf"{{commandchars=\\\{{\}},xleftmargin={value},"
-                     rf"xrightmargin={value}}}"),
-                    r"\fi",
-                ]
 
         body_lines = lines[i + 1:j - 1]
         # Keep a leading heading ahead of the injected raw block: Pandoc uses
@@ -236,7 +228,8 @@ def _replace_block_options(text: str) -> str:
 
         body = _replace_block_options("\n".join(body_lines))
         result += [opening, *heading, "```{=tex}", *latex, "```", body,
-                   "```{=tex}", r"\endgroup", "```", lines[j - 1]]
+                   "```{=tex}", *latex_end, r"\endgroup", "```",
+                   lines[j - 1]]
         i = j
 
     return "\n".join(result)

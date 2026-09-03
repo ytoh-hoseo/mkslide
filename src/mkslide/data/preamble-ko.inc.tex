@@ -126,6 +126,29 @@
 \setbeamertemplate{itemize subitem}{$\circ$}
 \setbeamertemplate{itemize subsubitem}{$\cdot$}
 
+% block의 indent 옵션에 사용하는 좌우 여백 환경.
+% leftskip/rightskip은 itemize/enumerate가 시작될 때 초기화되므로,
+% 바깥쪽 list로 본문 폭을 줄여 내부 목록에도 여백이 유지되게 한다.
+\makeatletter
+\newenvironment{mkslideindent}[1]{%
+  \begin{list}{}{%
+    \setlength{\leftmargin}{#1}%
+    \setlength{\rightmargin}{#1}%
+    \setlength{\listparindent}{\parindent}%
+    \setlength{\topsep}{0pt}%
+    \setlength{\partopsep}{0pt}%
+    \setlength{\parsep}{\parskip}%
+    \setlength{\itemsep}{0pt}%
+  }%
+  \item\relax
+  % 보이지 않는 바깥 list가 사용자 목록의 중첩 레벨을 소비하지 않게 한다.
+  \advance\@listdepth\m@ne
+}{%
+  \advance\@listdepth\@ne
+  \end{list}%
+}
+\makeatother
+
 % block 스타일
 \setbeamercolor{block title}{bg=orange!70, fg=white}
 \setbeamercolor{block body}{bg=orange!10, fg=black}
