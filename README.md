@@ -91,8 +91,9 @@ Markdown YAML front matter에 선언하거나, CLI에서 `--var`로 전달할 �
 ```yaml
 # YAML front matter로 지정 (파일 내)
 ---
-mainfont: NanumSquareRound
+mainfont: Noto Sans
 monofont: NanumGothicCoding
+mathfont: New Computer Modern Math
 fontsize: 11pt
 aspectratio: 169
 toc: false
@@ -103,6 +104,48 @@ toc: false
 # CLI로 지정 (YAML 없이, 또는 덮어쓰기)
 mkslide week01.md --var mainfont=NanumSquareRound --var aspectratio=43
 ```
+
+기본 영문 글꼴은 `Noto Sans`, 기본 고정폭 글꼴은
+`NanumGothicCoding`, 기본 수학 글꼴은 `New Computer Modern Math`입니다.
+
+#### 수학 글꼴 (`mathfont`)
+
+`mathfont`는 수식의 숫자, 변수, 연산자와 `\mathbb`, `\symbb`,
+`\mathcal` 같은 수학 알파벳에 사용할 OpenType 수학 글꼴을 지정합니다.
+본문 글꼴과 수학 글꼴은 별개이므로 `mathfont`에는 OpenType 수학 테이블을
+제공하는 수학 글꼴을 지정해야 합니다.
+
+```yaml
+---
+mathfont: STIX Two Math
+---
+```
+
+명령행에서 일시적으로 변경할 수도 있습니다. 이름에 공백이 있으면 전체
+`KEY=VALUE` 인자를 따옴표로 감쌉니다.
+
+```bash
+mkslide week01.md --var "mathfont=STIX Two Math"
+```
+
+현재 TeX Live에서 사용할 수 있는 대표적인 serif 수학 글꼴은 다음과
+같습니다.
+
+| 글꼴 | 특징 |
+|------|------|
+| `New Computer Modern Math` | 기본값. Computer Modern 계열이며 확장된 글리프 제공 |
+| `Latin Modern Math` | Computer Modern 계열의 전통적인 모양 |
+| `STIX Two Math` | 논문에 익숙한 모양이며 기호와 `\mathbb`가 선명함 |
+| `Libertinus Math` | 현대적이고 균형 잡힌 serif 스타일 |
+| `TeX Gyre Pagella Math` | Palatino 계열의 넓고 부드러운 모양 |
+| `TeX Gyre Schola Math` | 획이 크고 또렷해 강의 슬라이드에 적합 |
+| `XITS Math` | Times 계열의 조밀하고 전통적인 모양 |
+
+> [!IMPORTANT]
+> `\setmathfont{...}`를 `header-includes`에 직접 넣지 마세요. 이 위치에서는
+> `kotex`보다 늦게 적용되어 `\mathbb`와 `\symbb`가 일반 기울임 글자로
+> 출력될 수 있습니다. 반드시 YAML의 `mathfont`나 `--var mathfont=...`를
+> 사용하세요.
 
 ## Markdown 작성 규칙
 

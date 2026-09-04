@@ -15,8 +15,9 @@ PREAMBLE_TEMPLATE = DATA_DIR / "preamble-ko.inc.tex"
 
 # Pandoc variables applied only when not defined in YAML front matter or --var
 DEFAULT_VARS = {
-    "mainfont": "NanumSquareRound",
+    "mainfont": "Noto Sans",
     "monofont": "NanumGothicCoding",
+    "mathfont": "New Computer Modern Math",
     "colorlinks": "true",
     "linkcolor": "black",
     "filecolor": "mainblue",
